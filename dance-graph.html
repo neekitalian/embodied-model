@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>身份保留舞蹈装置 · 工具知识图谱</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; background: #0f0f14; color: #e8e8ee;
+    font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; overflow: hidden; }
+  #wrap { position: fixed; inset: 0; }
+  svg { width: 100%; height: 100%; cursor: grab; display: block; }
+  svg.panning { cursor: grabbing; }
+
+  .edge { stroke: #33343f; stroke-width: 1.2; transition: stroke .15s, stroke-width .15s; }
+  .edge.flow { stroke: #4a5a6a; stroke-width: 2; stroke-dasharray: 4 3; }
+  .edge.avoid { stroke: #5a2f2f; stroke-dasharray: 2 4; }
+  .edge.hot { stroke: #ffd24d; stroke-width: 2.4; stroke-dasharray: none; }
+  .edge.dim { stroke-opacity: .12; }
+  .elabel { fill: #8a8b96; font-size: 9px; pointer-events: none; }
+  .elabel.dim { opacity: .1; }
+
+  .node circle { stroke: #0f0f14; stroke-width: 2; cursor: pointer; transition: stroke .15s, stroke-width .15s; }
+  .node.sel circle, .node.nbr circle { stroke: #fff; stroke-width: 2.5; }
+  .node.dim { opacity: .22; }
+  .node text { fill: #e8e8ee; font-size: 11px; pointer-events: none; text-anchor: middle; }
+  .node text.sub { fill: #9a9ba6; font-size: 8.5px; }
+
+  #panel { position: fixed; top: 14px; right: 14px; width: 300px; max-width: calc(100vw - 28px);
+    background: rgba(22,22,30,.94); border: 1px solid #2a2a35; border-radius: 12px;
+    padding: 16px 18px; backdrop-filter: blur(8px); display: none; max-height: calc(100vh - 28px); overflow-y: auto; }
+  #panel.on { display: block; }
+  #panel .tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 20px;
+    color: #0f0f14; font-weight: 600; margin-bottom: 8px; }
+  #panel h2 { font-size: 16px; margin-bottom: 2px; line-height: 1.3; }
+  #panel .en { font-size: 11px; color: #9a9ba6; margin-bottom: 10px; }
+  #panel p { font-size: 12.5px; line-height: 1.65; color: #cdced6; }
+  #panel p b { color: #fff; }
+  #panel .close { position: absolute; top: 10px; right: 12px; color: #777; cursor: pointer; font-size: 18px; }
+
+  #legend { position: fixed; left: 14px; bottom: 14px; background: rgba(22,22,30,.9);
+    border: 1px solid #2a2a35; border-radius: 10px; padding: 11px 13px; font-size: 11px; }
+  #legend .row { display: flex; align-items: center; gap: 7px; margin: 4px 0; color: #b8b9c2; }
+  #legend .dot { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+
+  #title { position: fixed; left: 14px; top: 14px; }
+  #title h1 { font-size: 15px; font-weight: 600; }
+  #title .s { font-size: 11px; color: #8a8b96; margin-top: 2px; }
+  #hint { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+    font-size: 11px; color: #55565f; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <svg id="svg"><g id="scene">
+    <g id="edges"></g><g id="elabels"></g><g id="nodes"></g>
+  </g></svg>
+</div>
+
+<div id="title">
+  <h1>身份保留舞蹈装置 · 工具图谱</h1>
+  <div class="s">Real-Time Identity-Preservation Motion Installation</div>
+</div>
+
+<div id="panel">
+  <span class="close" onclick="clearSel()">×</span>
+  <span class="tag" id="p-tag"></span>
+  <h2 id="p-label"></h2>
+  <div class="en" id="p-en"></div>
+  <p id="p-detail"></p>
+</div>
+
+<div id="legend"></div>
+<div id="hint">点击节点看详情 · 拖拽移动 · 滚轮缩放 · 拖背景平移</div>
+
+<script>
+// ============ 图谱数据 ============
+const G = {
+  root:  { c: "#ffd24d", name: "作品 / 项目" },
+  stage: { c: "#5fa9d8", name: "流水线阶段" },
+  tool:  { c: "#6ad07f", name: "工具 / 技术(选用)" },
+  ip:    { c: "#c58cf0", name: "核心 IP" },
+  avoid: { c: "#e07a7a", name: "避开 / 不用" },
+  track: { c: "#e8a660", name: "许可路线" },
+};
+
+const NODES = [
+  { id: "root", label: "身份保留舞蹈装置", en: "Unnoticed Dance — 东京画廊 + 人形机器人 SDK 原型", group: "root", r: 30,
+    detail: "访客在普通 RGB 摄像头前起舞 → 提取 3D 姿态 → 把 TA 的<b>身份特征</b>叠加到预录动作库上 → 风格化 VRM 形象重新演绎「你依然是你」。<b>单人可做、MacBook 可跑、每位访客 5–10 秒预算</b>(2D→3D 提升器可达每秒数百到数千帧)。" },
+
+  // ==== 核心 IP ====
+  { id: "ip", label: "身份签名 + 分区 α 融合", en: "Identity Signature + Zone-decomposed α-blend", group: "ip", r: 22,
+    detail: "<b>你的 IP,其余全是通用件。</b>显式身份嵌入 + 分区特征空间时序 α 融合:便宜(纯矩阵运算)、确定性、可分区控制,能保证每帧预算、避免扩散方差。可投 SIGGRAPH Asia / CHI / Ars Electronica,并平滑迁移到机器人 SDK。" },
+  { id: "transmomo", label: "TransMoMo", en: "CVPR 2020 · 运动/结构/视角解耦", group: "tool", r: 13,
+    detail: "无监督不变性损失解耦<b>动作 / 结构 / 视角</b>——「与身体结构无关的签名」经典模板。2D 视频导向、2020 年工作,只当概念支架,不能即插即用。代码开源。" },
+  { id: "idpres", label: "IDPres", en: "IEEE TIFS 2024 · 骨架身份增强", group: "tool", r: 13,
+    detail: "基于骨骼,明确纳入目标的<b>个体化动作与骨骼信息</b>以增强身份表达。已发表方法,需重新实现。签名稳定性(几秒动作能否可辨识)先按其评估法做原型验证。" },
+  { id: "puzzle", label: "Motion Puzzle", en: "ACM TOG 2022 · 逐身体部位风格", group: "tool", r: 13,
+    detail: "<b>逐身体部位(分区)</b>风格迁移,证明按分区控制风格可保留内容——与你的分区分解设计最接近的参考。有代码。" },
+
+  // ==== 阶段 1 采集 ====
+  { id: "s-cap", label: "① 采集", en: "Capture", group: "stage", r: 17,
+    detail: "采集永远不是瓶颈。控制画廊照明、固定相机、锁定曝光(MediaPipe 低光/遮挡下会掉)。艺术再现<b>无需度量深度</b>,单目 RGB 足够。" },
+  { id: "webcam", label: "RGB 摄像头", en: "1080p60 · 主力", group: "tool", r: 12,
+    detail: "1080p60 网络摄像头为主,仅需硬件。喂给 BlazePose 已足以支撑艺术性动作再现。" },
+  { id: "iphone", label: "iPhone 12 Pro+", en: "LightBuzz SDK · 可选深度", group: "tool", r: 11,
+    detail: "要深度就用 iPhone LiDAR + LightBuzz SDK(商业授权),给 2D+3D 关节点。深度留给机器人 SDK 验证线;画廊线不需要。" },
+
+  // ==== 阶段 2 姿态 ====
+  { id: "s-pose", label: "② 姿态提取 / 3D 提升", en: "Pose & 2D→3D Lifting", group: "stage", r: 17,
+    detail: "两级管线最快、最适合 Mac。<b>提升器 117–9341 FPS</b>(RTX 4080, Scientific Reports 2025),因为喂的是紧凑 2D 关键点序列而非图像。导出 ONNX,推荐 Python 端推理并流式传关节。" },
+  { id: "mediapipe", label: "MediaPipe BlazePose", en: "GHUM Holistic · 2D+粗3D", group: "tool", r: 12,
+    detail: "输出 3D 关键点,可实时(移动端 ~15 FPS,桌面快得多)。Apache-2.0。假定被摄者正面朝相机;需一次性 T 型站姿校准。" },
+  { id: "agformer", label: "MotionAGFormer", en: "Apache-2.0 · 产品化首选", group: "tool", r: 12,
+    detail: "精度与 MotionBERT 相当但<b>计算量约一半</b>,更适合 MacBook;Apache-2.0 是产品化更安全的选择。用 S/XS 变体或因果短窗保护延迟预算。" },
+  { id: "motionbert", label: "MotionBERT", en: "研究/CC-BY-NC · 精度顶尖", group: "tool", r: 12,
+    detail: "精度顶尖(42.5M 参数, 174.7 GFLOPs),但较重且<b>非商业授权</b>→ 限制 SDK 线。Lite 版 243 帧窗口带来缓冲延迟,尽早端到端实测。" },
+
+  // ==== 阶段 3 签名 ====
+  { id: "s-sig", label: "③ 身份签名提取", en: "Identity Signature", group: "stage", r: 17,
+    detail: "自行实现显式对比/解耦嵌入,基于 TransMoMo + IDPres,按 Motion Puzzle 方式分区解码。需要几秒钟丰富的访客动作才能形成稳定签名。" },
+
+  // ==== 阶段 4 动作源 ====
+  { id: "s-src", label: "④ 目标动作源", en: "Target Motion Library", group: "stage", r: 17,
+    detail: "无文本提示 + 硬延迟预算 → 必须用<b>预录片段库</b>。多样性来自:精选数十段片段按访客动作特征选片 + 离线用 MCM-LDM 预烘焙风格化变体,让实时路径只跑快速 α 融合。" },
+  { id: "mixamo", label: "Mixamo", en: "Adobe · 商用安全 · 主库", group: "tool", r: 12,
+    detail: "免费、可用于商业产品(Adobe 条款)——<b>画廊与 SDK 产品线只用它</b>,是通往 SDK 的桥梁。" },
+  { id: "amass", label: "AMASS / HumanML3D", en: "仅非商业 · 研究/发表线", group: "tool", r: 12,
+    detail: "授权仅限<b>非商业</b>科研/教育/艺术项目,且<b>禁止训练用于商业的方法</b>。画廊装置可能算「非商业艺术项目」,但 SDK 不算——只留研究/论文线。" },
+  { id: "momask", label: "MoMask", en: "CVPR 2024 · 文本→动作 · 离线预烘焙", group: "tool", r: 12,
+    detail: "掩码建模 + 残差 VQ-VAE 的文本→动作生成,是你 Phase 2「Semantic Spectrum + 分区融合」的代码基座。<b>需文本提示 + 扩散级算力 → 只在离线(RunPod A100)预生成风格化目标动作库,绝不进直播 5–10 秒环。</b>训练于 HumanML3D → 继承 AMASS 非商业授权,仅画廊/论文线。" },
+  { id: "aist", label: "AIST++", en: "舞蹈数据集 · SMPL · 体裁标注", group: "tool", r: 12,
+    detail: "带舞蹈<b>体裁标注</b>的 SMPL 动作数据集——「按身体特征匹配舞蹈体裁」的目标库来源与匹配依据。SMPL .pkl → 需导出到 HumanML3D 22 关节。底层 AIST 视频库为非商业用途,归入画廊/研究线。" },
+
+  // ==== 阶段 5 融合 ====
+  { id: "s-blend", label: "⑤ 身份应用 / 融合", en: "Identity Application / Blending", group: "stage", r: 17,
+    detail: "你的分区时序 α 融合是核心。边界不连续 → 时序 α 平滑 + 对输出关节做 <b>1€ filter</b> 减少抖动。" },
+  { id: "styleerd", label: "Style-ERD", en: "CVPR 2022 · 在线流式基线", group: "tool", r: 11,
+    detail: "Encoder-Recurrent-Decoder,已证实的<b>在线/流式</b>基线,运行效率优于离线方法。作为实时后备与对比基线。" },
+  { id: "diffusion", label: "MCM-LDM / LILAC", en: "离线预烘焙 · v2 前沿", group: "tool", r: 11,
+    detail: "MCM-LDM(CVPR 2024)最强离线任意风格迁移基线;LILAC(2025)滑窗流式后继。<b>只离线用于预烘焙</b>动作库,不进直播路径。" },
+
+  // ==== 阶段 6 重定向 ====
+  { id: "s-retarget", label: "⑥ 重定向", en: "Retargeting", group: "stage", r: 17,
+    detail: "Unity Mecanim 通过规范化<b>肌肉空间</b>映射任意 Humanoid 骨架,自动实时处理比例差异,零额外依赖。坑:脚滑(启用 Foot IK)、VRoid A 型站姿(强制 T 型)、核对肩/两骨脊椎、SMPL 根平移单独处理。" },
+  { id: "mecanim", label: "Unity Mecanim", en: "内置 · 肌肉空间重定向", group: "tool", r: 12,
+    detail: "标准 MediaPipe→Unity 形象仓库依赖的同一机制。学习式重定向(ReConForM/MoReFlow)留给 v2——多为 CUDA,非 Apple Silicon。" },
+
+  // ==== 阶段 7 Unity 集成 ====
+  { id: "s-unity", label: "⑦ Unity 集成 / 数据流", en: "Streaming to Unity", group: "stage", r: 17,
+    detail: "Python(GPU 推理)与 Unity(渲染)保持<b>独立进程</b>,OSC/VMC 桥干净解耦,可独立更换渲染机(MacBook)与 GPU 机(RunPod A100)。localhost UDP 亚毫秒,延迟由模型决定。" },
+  { id: "vmc", label: "VMC Protocol", en: "python-osc → EVMC4U + uOSC", group: "tool", r: 12,
+    detail: "OSC 协议开放,自己写发送端即可(不需付费 Virtual Motion Capture)。Python 发 HumanBodyBones 数据到 UDP 39539 → EVMC4U ExternalReceiver 应用到 VRM。全 MIT、纯 C#、跑 macOS。" },
+
+  // ==== 阶段 8 形象 ====
+  { id: "s-avatar", label: "⑧ 虚拟形象", en: "Avatar & Aesthetics", group: "stage", r: 17,
+    detail: "选<b>轮廓/比例中性</b>的形象让动作承载身份——命题是「你依然是你」,别用夸张预设盖过签名。固定相机/灯光 + 后处理(泛光/微 DOF/色彩分级)得画廊级画面;可分屏(原始 vs 再表达)。" },
+  { id: "vroid", label: "VRoid → VRM", en: "免费 · Mecanim 骨骼 + ARKit", group: "tool", r: 12,
+    detail: "VRoid Studio 免费,导出 VRM 自带 Mecanim 人形骨骼 + ~52 ARKit blendshape,有意设计的风格化角色(非骨骼、非写实)。经 UniVRM(MIT)接入。" },
+  { id: "toon", label: "Unity Toon Shader", en: "官方免费 · NPR 卡通渲染", group: "tool", r: 11,
+    detail: "官方、免费、支持所有管线(需 URP/HDRP)。2 段阴影渐变 + HDR 边缘光 + 描边 = 刻意的插画感,读作「艺术」而非「技术演示」。" },
+
+  // ==== 避开 ====
+  { id: "a-realsense", label: "RealSense LiDAR", en: "EOL · 2022-02-28 停订", group: "avoid", r: 12,
+    detail: "Intel 已停产 L515 LiDAR / T265 追踪 / RealSense ID 人脸线,仅剩 D4xx 立体相机。<b>把数月装置押在其上是供应/支持负债。</b>机器人级 RGB-D 改选 Orbbec Gemini。" },
+  { id: "a-rpm", label: "Ready Player Me", en: "2026-01-31 起停服", group: "avoid", r: 12,
+    detail: "官方论坛公告:服务自 2026-01-31 起不可用(Netflix 2025-12-19 收购后果)。<b>不要把形象层建在它上面。</b>" },
+  { id: "a-wham", label: "WHAM 直播", en: "在线仅 ~9 FPS", group: "avoid", r: 11,
+    detail: "世界坐标 SMPL,核心网络 200 FPS 但含预处理在线仅 ~9 FPS(A100)——排除单访客画廊循环。留给世界坐标 SDK/机器人线。" },
+  { id: "a-livediff", label: "扩散模型直播", en: "MCM-LDM/SMooDi/MotionDiffuse", group: "avoid", r: 11,
+    detail: "都是离线任意风格迁移,跑不出 5–10 秒预算,MacBook 上未经验证。<b>不要在画廊承诺现场扩散。</b>只离线预烘焙。" },
+  { id: "a-barracuda", label: "Barracuda", en: "已弃用 → 用 Sentis", group: "avoid", r: 10,
+    detail: "Unity 官方:Barracuda 已被 Sentis(2.1.x)取代。引擎内推理用 Sentis 并尽早验证吞吐,否则不如走 Python 端推理。" },
+
+  // ==== 路线 ====
+  { id: "t-gallery", label: "画廊 / 论文线", en: "Gallery + Publication", group: "track", r: 16,
+    detail: "可用 Mixamo + AMASS/HumanML3D(算「非商业艺术项目」)+ MotionBERT。发表:SIGGRAPH Asia / CHI / Ars Electronica。" },
+  { id: "t-sdk", label: "SDK 产品线", en: "Robotics SDK Product", group: "track", r: 16,
+    detail: "<b>商业 → 只用 Mixamo + MotionAGFormer(Apache-2.0)</b>,禁 AMASS、禁 MotionBERT。两条线保持干净不串——这是真实的法律岔口。" },
+];
+
+const EDGES = [
+  // 主干:作品 → IP + 各阶段
+  ["root","ip","核心",""], ["root","s-cap","",""],
+  ["ip","transmomo","锚定",""], ["ip","idpres","锚定",""], ["ip","puzzle","参照",""],
+  ["ip","s-sig","实现",""],
+
+  // 流水线顺序
+  ["s-cap","s-pose","flow","→"], ["s-pose","s-sig","flow","→"], ["s-sig","s-src","flow","→"],
+  ["s-src","s-blend","flow","→"], ["s-blend","s-retarget","flow","→"],
+  ["s-retarget","s-unity","flow","→"], ["s-unity","s-avatar","flow","→"],
+
+  // 阶段 → 工具
+  ["s-cap","webcam","",""], ["s-cap","iphone","",""],
+  ["s-pose","mediapipe","",""], ["s-pose","agformer","",""], ["s-pose","motionbert","",""],
+  ["s-src","mixamo","",""], ["s-src","amass","",""],
+  ["s-src","momask","离线生成",""], ["s-src","aist","体裁库",""],
+  ["ip","momask","代码基座",""], ["aist","s-sig","体裁匹配",""],
+  ["s-blend","ip","核心方法",""], ["s-blend","styleerd","后备",""], ["s-blend","diffusion","离线",""],
+  ["s-retarget","mecanim","",""],
+  ["s-unity","vmc","",""],
+  ["s-avatar","vroid","",""], ["s-avatar","toon","",""],
+
+  // 避开(反向警示)
+  ["s-cap","a-realsense","避开","avoid"], ["s-avatar","a-rpm","避开","avoid"],
+  ["s-pose","a-wham","避开","avoid"], ["s-blend","a-livediff","避开","avoid"],
+  ["s-pose","a-barracuda","避开","avoid"],
+
+  // 路线归属
+  ["t-sdk","mixamo","只用",""], ["t-sdk","agformer","只用",""],
+  ["t-gallery","amass","可用",""], ["t-gallery","motionbert","可用",""],
+  ["t-gallery","momask","可用",""], ["t-gallery","aist","可用",""],
+  ["t-sdk","amass","禁用","avoid"], ["t-sdk","motionbert","禁用","avoid"],
+  ["t-sdk","momask","禁用","avoid"], ["t-sdk","aist","禁用","avoid"],
+  ["root","t-gallery","",""], ["root","t-sdk","",""],
+];
+
+// ============ 力导向布局 ============
+const svg = document.getElementById("svg");
+const scene = document.getElementById("scene");
+const gEdges = document.getElementById("edges");
+const gEls = document.getElementById("elabels");
+const gNodes = document.getElementById("nodes");
+
+let W = window.innerWidth, H = window.innerHeight;
+const nodeById = {};
+NODES.forEach((n, i) => {
+  // 环形初始播撒(确定性,不用随机)
+  const a = (i / NODES.length) * Math.PI * 2;
+  n.x = W/2 + Math.cos(a) * 260;
+  n.y = H/2 + Math.sin(a) * 220;
+  n.vx = 0; n.vy = 0;
+  nodeById[n.id] = n;
+});
+
+// 邻接表
+const adj = {};
+NODES.forEach(n => adj[n.id] = new Set());
+EDGES.forEach(e => { adj[e[0]].add(e[1]); adj[e[1]].add(e[0]); });
+
+// 建 DOM
+const edgeEls = EDGES.map(e => {
+  const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+  let cls = "edge";
+  if (e[2] === "flow") cls += " flow";
+  if (e[3] === "avoid") cls += " avoid";
+  line.setAttribute("class", cls);
+  gEdges.appendChild(line);
+  let lbl = null;
+  const txt = (e[2] && e[2] !== "flow") ? e[2] : "";
+  if (txt) {
+    lbl = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    lbl.setAttribute("class", "elabel"); lbl.textContent = txt;
+    gEls.appendChild(lbl);
+  }
+  return { e, line, lbl };
+});
+
+const nodeEls = NODES.map(n => {
+  const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+  g.setAttribute("class", "node"); g.dataset.id = n.id;
+  const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  c.setAttribute("r", n.r); c.setAttribute("fill", G[n.group].c);
+  g.appendChild(c);
+  const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  t.setAttribute("y", n.r + 13); t.textContent = n.label;
+  g.appendChild(t);
+  gNodes.appendChild(g);
+  return { n, g, c, t };
+});
+
+// 力模拟
+let alpha = 1;
+function tick() {
+  const REP = 5200, SPRING = 0.035, GRAV = 0.018, DAMP = 0.86;
+  // 斥力
+  for (let i = 0; i < NODES.length; i++) {
+    const a = NODES[i];
+    for (let j = i+1; j < NODES.length; j++) {
+      const b = NODES[j];
+      let dx = a.x - b.x, dy = a.y - b.y;
+      let d2 = dx*dx + dy*dy; if (d2 < 1) d2 = 1;
+      const d = Math.sqrt(d2);
+      const f = REP / d2;
+      const fx = (dx/d)*f, fy = (dy/d)*f;
+      a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+    }
+  }
+  // 弹簧
+  EDGES.forEach(e => {
+    const a = nodeById[e[0]], b = nodeById[e[1]];
+    let dx = b.x - a.x, dy = b.y - a.y;
+    let d = Math.sqrt(dx*dx + dy*dy) || 1;
+    const rest = a.r + b.r + 66;
+    const f = (d - rest) * SPRING;
+    const fx = (dx/d)*f, fy = (dy/d)*f;
+    a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
+  });
+  // 向心 + 积分
+  NODES.forEach(n => {
+    if (n.fixed) return;
+    n.vx += (W/2 - n.x) * GRAV * 0.05;
+    n.vy += (H/2 - n.y) * GRAV * 0.05;
+    n.vx *= DAMP; n.vy *= DAMP;
+    n.x += n.vx * alpha; n.y += n.vy * alpha;
+  });
+  render();
+  alpha *= 0.994; if (alpha < 0.05) alpha = 0.05;
+  requestAnimationFrame(tick);
+}
+
+function render() {
+  edgeEls.forEach(({e, line, lbl}) => {
+    const a = nodeById[e[0]], b = nodeById[e[1]];
+    line.setAttribute("x1", a.x); line.setAttribute("y1", a.y);
+    line.setAttribute("x2", b.x); line.setAttribute("y2", b.y);
+    if (lbl) { lbl.setAttribute("x", (a.x+b.x)/2); lbl.setAttribute("y", (a.y+b.y)/2 - 2); }
+  });
+  nodeEls.forEach(({n, g}) => g.setAttribute("transform", `translate(${n.x},${n.y})`));
+}
+
+// ============ 选择 / 高亮 ============
+let selId = null;
+function selectNode(id) {
+  selId = id;
+  const n = nodeById[id];
+  document.getElementById("panel").classList.add("on");
+  const tag = document.getElementById("p-tag");
+  tag.textContent = G[n.group].name; tag.style.background = G[n.group].c;
+  document.getElementById("p-label").textContent = n.label;
+  document.getElementById("p-en").textContent = n.en || "";
+  document.getElementById("p-detail").innerHTML = n.detail || "";
+  const nb = adj[id];
+  nodeEls.forEach(({n:nn, g}) => {
+    g.classList.toggle("sel", nn.id === id);
+    g.classList.toggle("nbr", nb.has(nn.id));
+    g.classList.toggle("dim", nn.id !== id && !nb.has(nn.id));
+  });
+  edgeEls.forEach(({e, line, lbl}) => {
+    const hot = e[0] === id || e[1] === id;
+    line.classList.toggle("hot", hot);
+    line.classList.toggle("dim", !hot);
+    if (lbl) lbl.classList.toggle("dim", !hot);
+  });
+}
+function clearSel() {
+  selId = null;
+  document.getElementById("panel").classList.remove("on");
+  nodeEls.forEach(({g}) => g.classList.remove("sel","nbr","dim"));
+  edgeEls.forEach(({line, lbl}) => { line.classList.remove("hot","dim"); if (lbl) lbl.classList.remove("dim"); });
+}
+
+// ============ 交互:拖拽节点 / 平移 / 缩放 ============
+let view = { x: 0, y: 0, k: 1 };
+function applyView() { scene.setAttribute("transform", `translate(${view.x},${view.y}) scale(${view.k})`); }
+
+function toScene(clientX, clientY) {
+  return { x: (clientX - view.x) / view.k, y: (clientY - view.y) / view.k };
+}
+
+let drag = null, pan = null, moved = false;
+svg.addEventListener("mousedown", ev => {
+  const g = ev.target.closest(".node");
+  if (g) {
+    const n = nodeById[g.dataset.id];
+    const p = toScene(ev.clientX, ev.clientY);
+    drag = { n, dx: n.x - p.x, dy: n.y - p.y }; n.fixed = true; moved = false;
+    alpha = Math.max(alpha, 0.5);
+  } else {
+    pan = { x: ev.clientX - view.x, y: ev.clientY - view.y }; svg.classList.add("panning"); moved = false;
+  }
+});
+window.addEventListener("mousemove", ev => {
+  if (drag) {
+    const p = toScene(ev.clientX, ev.clientY);
+    drag.n.x = p.x + drag.dx; drag.n.y = p.y + drag.dy; drag.n.vx = 0; drag.n.vy = 0; moved = true;
+  } else if (pan) {
+    view.x = ev.clientX - pan.x; view.y = ev.clientY - pan.y; applyView(); moved = true;
+  }
+});
+window.addEventListener("mouseup", ev => {
+  if (drag) {
+    drag.n.fixed = false;
+    if (!moved) selectNode(drag.n.id);
+    drag = null;
+  } else if (pan) {
+    if (!moved) { const g = ev.target.closest(".node"); if (!g) clearSel(); }
+    pan = null; svg.classList.remove("panning");
+  }
+});
+svg.addEventListener("wheel", ev => {
+  ev.preventDefault();
+  const s = ev.deltaY < 0 ? 1.12 : 1/1.12;
+  const nk = Math.min(3, Math.max(0.3, view.k * s));
+  const r = svg.getBoundingClientRect();
+  const mx = ev.clientX - r.left, my = ev.clientY - r.top;
+  view.x = mx - (mx - view.x) * (nk / view.k);
+  view.y = my - (my - view.y) * (nk / view.k);
+  view.k = nk; applyView();
+}, { passive: false });
+
+window.addEventListener("resize", () => { W = window.innerWidth; H = window.innerHeight; });
+
+// 图例
+const legend = document.getElementById("legend");
+Object.values(G).forEach(g => {
+  const row = document.createElement("div"); row.className = "row";
+  row.innerHTML = `<span class="dot" style="background:${g.c}"></span>${g.name}`;
+  legend.appendChild(row);
+});
+
+applyView();
+tick();
+</script>
+</body>
+</html>

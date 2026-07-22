@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unnoticed Dance · Project Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0f0f14; --panel: #16161e; --line: #262631; --ink: #e8e8ee; --dim: #9a9ba6;
+    --blue: #5fa9d8; --green: #6ad07f; --gold: #ffd24d; --orange: #e8a660; --red: #e07a7a; --purple: #c58cf0;
+  }
+  body { background: var(--bg); color: var(--ink); line-height: 1.5;
+    font-family: -apple-system, "PingFang SC", "Segoe UI", sans-serif; padding: 32px 20px 64px; }
+  .wrap { max-width: 1060px; margin: 0 auto; }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header { margin-bottom: 8px; }
+  h1 { font-size: 25px; letter-spacing: .2px; }
+  .sub { color: var(--dim); font-size: 14px; margin-top: 4px; }
+  .zh { color: var(--dim); font-size: 13px; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 30px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 13px 16px; flex: 1; min-width: 150px; }
+  .stat .n { font-size: 22px; font-weight: 700; }
+  .stat .l { font-size: 11.5px; color: var(--dim); margin-top: 2px; }
+  .stat.warn .n { color: var(--orange); } .stat.ok .n { color: var(--green); } .stat.mid .n { color: var(--gold); }
+
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--dim);
+    margin: 34px 0 14px; font-weight: 600; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 15px;
+    border-left: 3px solid var(--line); }
+  .card .st { font-size: 11px; color: var(--dim); }
+  .card h3 { font-size: 14.5px; margin: 3px 0 2px; }
+  .card .z { font-size: 12px; color: var(--dim); }
+  .card .note { font-size: 11.5px; color: #b6b7c1; margin-top: 8px; }
+  .chip { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+    color: #0f0f14; margin-top: 9px; }
+  .c-built { background: var(--green); } .c-local { background: var(--orange); }
+  .c-wire  { background: var(--gold); }  .c-pm { background: var(--purple); }
+  .card.built { border-left-color: var(--green); } .card.local { border-left-color: var(--orange); }
+  .card.wire { border-left-color: var(--gold); } .card.pm { border-left-color: var(--purple); }
+
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .box h3 { font-size: 14px; margin-bottom: 10px; }
+  .box.can h3 { color: var(--green); } .box.cant h3 { color: var(--orange); }
+  .box ul { list-style: none; } .box li { font-size: 13px; padding: 5px 0 5px 20px; position: relative; color: #cdced6; }
+  .box.can li::before { content: "✓"; color: var(--green); position: absolute; left: 0; }
+  .box.cant li::before { content: "→"; color: var(--orange); position: absolute; left: 0; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; }
+  td code { color: var(--blue); font-size: 12px; }
+  .t-ok { color: var(--green); } .t-warn { color: var(--orange); } .t-mid { color: var(--gold); }
+
+  ol.run { counter-reset: s; list-style: none; }
+  ol.run li { position: relative; padding: 10px 0 10px 38px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+  ol.run li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: 9px;
+    width: 24px; height: 24px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line);
+    color: var(--blue); font-size: 12px; font-weight: 700; display: grid; place-items: center; }
+  ol.run code { background: #0c0c11; padding: 1px 6px; border-radius: 5px; color: var(--green); font-size: 12px; }
+  .tag { font-size: 10px; color: #0f0f14; padding: 1px 7px; border-radius: 20px; margin-left: 6px; }
+  .tag.here { background: var(--green); } .tag.mac { background: var(--orange); }
+
+  .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .btn { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 11px 16px;
+    font-size: 13.5px; color: var(--ink); display: inline-flex; gap: 8px; align-items: center; }
+  .btn:hover { border-color: var(--blue); text-decoration: none; }
+  footer { margin-top: 40px; color: #55565f; font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Unnoticed Dance — Project Dashboard</h1>
+    <div class="sub">Real-time identity-preservation motion installation · Tokyo gallery + humanoid-robotics SDK</div>
+    <div class="zh">身份保留舞蹈装置 · 实时 · 东京画廊 + 人形机器人 SDK 原型</div>
+  </header>
+
+  <div class="bar">
+    <div class="stat ok"><div class="n">6</div><div class="l">components built &amp; unit-tested</div></div>
+    <div class="stat mid"><div class="n">0 / 4</div><div class="l">integration steps done (local)</div></div>
+    <div class="stat warn"><div class="n">Not yet</div><div class="l">end-to-end MVP demonstrated</div></div>
+    <div class="stat"><div class="n">2</div><div class="l">silent bugs caught by tests</div></div>
+  </div>
+
+  <h2>Pipeline status</h2>
+  <div class="grid" id="stages"></div>
+
+  <h2>What we can do now</h2>
+  <div class="cols">
+    <div class="box can">
+      <h3>✓ In this cloud session (web / shippable)</h3>
+      <ul>
+        <li>Build &amp; deploy this dashboard to Vercel</li>
+        <li>Edit the interactive tool knowledge graph</li>
+        <li>Write &amp; unit-test pure-Python pipeline pieces (no camera/GPU)</li>
+        <li>Draft Unity setup notes, runbooks, license docs</li>
+      </ul>
+    </div>
+    <div class="box cant">
+      <h3>→ Only on your Mac (hardware / local files)</h3>
+      <ul>
+        <li>Webcam capture (MediaPipe needs a camera)</li>
+        <li>Run the blend — needs your <code>semantic_spectrum</code> + AIST++</li>
+        <li>Unity: import VRM, receive VMC, drive the avatar</li>
+        <li>Verify VMC coordinate handedness against the live avatar</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Deliverables shipped</h2>
+  <div class="box" style="padding:6px 4px">
+  <table>
+    <thead><tr><th>File</th><th>Role</th><th>Status</th><th>Verified</th></tr></thead>
+    <tbody id="files"></tbody>
+  </table>
+  </div>
+
+  <h2>Runbook — fastest path to a real "MVP works"</h2>
+  <div class="box">
+    <ol class="run" id="runbook"></ol>
+  </div>
+
+  <h2>Explore</h2>
+  <div class="links">
+    <a class="btn" href="/dance-graph">🕸️ Tool knowledge graph</a>
+    <a class="btn" href="https://github.com/mpeter56/momask-codes" target="_blank" rel="noopener">⧉ momask-codes repo</a>
+    <a class="btn" href="https://github.com/neekitalian/embodied-model/tree/main/pipeline" target="_blank" rel="noopener">🐍 Pipeline code</a>
+  </div>
+
+  <footer>
+    Deployed on Vercel · dashboard reflects session state as of last push · pipeline detail lives in
+    <a href="/dance-graph">/dance-graph</a>. This is a status surface, not the running app —
+    the app runs locally in <code>momask-codes-main/</code> · scaffolds mirrored in <code>/pipeline</code>.
+  </footer>
+</div>
+
+<script>
+const STAGES = [
+  { n:"① Capture", z:"采集 · webcam → landmarks", cls:"built", chip:"c-built", st:"Built · run local",
+    note:"MediaPipe BlazePose world 3D. Logic tested 12/12; real run needs a camera." },
+  { n:"② 3D Lift", z:"提升 · → HumanML3D 22", cls:"built", chip:"c-built", st:"Built · tested",
+    note:"33→22 joint map, y-up, hip-centered, 1€ filter. Jitter cut 7×." },
+  { n:"③ Identity signature", z:"身份签名", cls:"local", chip:"c-local", st:"Your module · local",
+    note:"semantic_spectrum encoder (TransMoMo/IDPres-grounded). Runs on your Mac." },
+  { n:"④ Target library", z:"目标动作源", cls:"local", chip:"c-local", st:"Local data",
+    note:"Mixamo (commercial) + AIST++/MoMask (offline pre-bake, gallery track only)." },
+  { n:"⑤ Zone α-blend", z:"身份融合 · core IP", cls:"wire", chip:"c-wire", st:"Scaffold · needs wiring",
+    note:"run_mvp.py orchestrator has 3 ADAPT points to match your real signatures." },
+  { n:"⑥ Retarget", z:"重定向 · joints → rotations", cls:"built", chip:"c-built", st:"Core built · tested",
+    note:"FK/quaternion core round-trips at 0.03%. Unity Mecanim does proportion mapping." },
+  { n:"⑦ VMC → Unity", z:"数据流", cls:"built", chip:"c-built", st:"Sender built · Unity local",
+    note:"python-osc → VMC 39539. OSC loopback verified. Handedness tuned live." },
+  { n:"⑧ Avatar", z:"形象 · VRoid VRM + Toon", cls:"pm", chip:"c-pm", st:"Notes · afternoon",
+    note:"UNITY_SETUP.md: T-pose fix, Foot IK, coordinate tuning recipe." },
+];
+const FILES = [
+  ["stage12_capture_lift.py","Stage 1+2 capture + lift","Built","t-ok","test 12/12"],
+  ["hml_skeleton.py","Skeleton + rotation math","Built","t-ok","FK 0.03%"],
+  ["view_clip.py","3D clip viewer","Built","t-ok","render ok"],
+  ["stage7_vmc_sender.py","VMC → Unity stream","Built","t-ok","OSC loopback"],
+  ["run_mvp.py","End-to-end orchestrator","Scaffold","t-mid","3 ADAPT points"],
+  ["UNITY_SETUP.md","Unity receiver notes","Notes","t-warn","local"],
+  ["dance-graph.html","Tool knowledge graph","Live","t-ok","on Vercel"],
+];
+const RUN = [
+  ['<code>pip install mediapipe opencv-python</code> → <code>python stage12_capture_lift.py --seconds 6</code>','mac'],
+  ['<code>python view_clip.py visitor_clip.npy</code> — confirm the capture is clean','mac'],
+  ['Paste your <code>semantic_spectrum</code> APIs + the target-pipeline spec into the <b>local</b> Claude → fix the 3 ADAPT points → <code>python run_mvp.py</code>','mac'],
+  ['Unity per <code>UNITY_SETUP.md</code> — stream a <b>raw</b> clip first to isolate retargeting from blending','mac'],
+];
+
+const st = document.getElementById('stages');
+STAGES.forEach(s => st.insertAdjacentHTML('beforeend',
+  `<div class="card ${s.cls}"><div class="st">${s.st}</div><h3>${s.n}</h3>
+   <div class="z">${s.z}</div><div class="note">${s.note}</div>
+   <span class="chip ${s.chip}">${s.st.split(' · ')[0]}</span></div>`));
+
+const fb = document.getElementById('files');
+FILES.forEach(f => fb.insertAdjacentHTML('beforeend',
+  `<tr><td><code>${f[0]}</code></td><td>${f[1]}</td><td class="${f[3]}">${f[2]}</td><td class="${f[3]}">${f[4]}</td></tr>`));
+
+const rb = document.getElementById('runbook');
+RUN.forEach(r => rb.insertAdjacentHTML('beforeend',
+  `<li>${r[0]}<span class="tag ${r[1]}">${r[1]==='mac'?'your Mac':'here'}</span></li>`));
+</script>
+</body>
+</html>
