@@ -81,7 +81,6 @@
   <header>
     <h1>Unnoticed Dance — Project Dashboard</h1>
     <div class="sub">Real-time identity-preservation motion installation · Tokyo gallery + humanoid-robotics SDK</div>
-    <div class="zh">身份保留舞蹈装置 · 实时 · 东京画廊 + 人形机器人 SDK 原型</div>
   </header>
 
   <div class="bar">
@@ -131,6 +130,7 @@
 
   <h2>Explore</h2>
   <div class="links">
+    <a class="btn" href="/portal">🎥 Record &amp; render portal</a>
     <a class="btn" href="/dance-graph">🕸️ Tool knowledge graph</a>
     <a class="btn" href="https://github.com/mpeter56/momask-codes" target="_blank" rel="noopener">⧉ momask-codes repo</a>
     <a class="btn" href="https://github.com/neekitalian/embodied-model/tree/main/pipeline" target="_blank" rel="noopener">🐍 Pipeline code</a>
@@ -145,21 +145,21 @@
 
 <script>
 const STAGES = [
-  { n:"① Capture", z:"采集 · webcam → landmarks", cls:"built", chip:"c-built", st:"Built · run local",
+  { n:"① Capture", z:"Capture · webcam → landmarks", cls:"built", chip:"c-built", st:"Built · run local",
     note:"MediaPipe BlazePose world 3D. Logic tested 12/12; real run needs a camera." },
-  { n:"② 3D Lift", z:"提升 · → HumanML3D 22", cls:"built", chip:"c-built", st:"Built · tested",
+  { n:"② 3D Lift", z:"Lift · → HumanML3D 22", cls:"built", chip:"c-built", st:"Built · tested",
     note:"33→22 joint map, y-up, hip-centered, 1€ filter. Jitter cut 7×." },
-  { n:"③ Identity signature", z:"身份签名", cls:"local", chip:"c-local", st:"Your module · local",
+  { n:"③ Identity signature", z:"Identity signature", cls:"local", chip:"c-local", st:"Your module · local",
     note:"semantic_spectrum encoder (TransMoMo/IDPres-grounded). Runs on your Mac." },
-  { n:"④ Target library", z:"目标动作源", cls:"local", chip:"c-local", st:"Local data",
+  { n:"④ Target library", z:"Target library", cls:"local", chip:"c-local", st:"Local data",
     note:"Mixamo (commercial) + AIST++/MoMask (offline pre-bake, gallery track only)." },
-  { n:"⑤ Zone α-blend", z:"身份融合 · core IP", cls:"wire", chip:"c-wire", st:"Scaffold · needs wiring",
+  { n:"⑤ Zone α-blend", z:"Zone blend · core IP", cls:"wire", chip:"c-wire", st:"Scaffold · needs wiring",
     note:"run_mvp.py orchestrator has 3 ADAPT points to match your real signatures." },
-  { n:"⑥ Retarget", z:"重定向 · joints → rotations", cls:"built", chip:"c-built", st:"Core built · tested",
+  { n:"⑥ Retarget", z:"Retarget · joints → rotations", cls:"built", chip:"c-built", st:"Core built · tested",
     note:"FK/quaternion core round-trips at 0.03%. Unity Mecanim does proportion mapping." },
-  { n:"⑦ VMC → Unity", z:"数据流", cls:"built", chip:"c-built", st:"Sender built · Unity local",
+  { n:"⑦ VMC → Unity", z:"Data stream", cls:"built", chip:"c-built", st:"Sender built · Unity local",
     note:"python-osc → VMC 39539. OSC loopback verified. Handedness tuned live." },
-  { n:"⑧ Avatar", z:"形象 · VRoid VRM + Toon", cls:"pm", chip:"c-pm", st:"Notes · afternoon",
+  { n:"⑧ Avatar", z:"Avatar · VRoid VRM + Toon", cls:"pm", chip:"c-pm", st:"Notes · afternoon",
     note:"UNITY_SETUP.md: T-pose fix, Foot IK, coordinate tuning recipe." },
 ];
 const FILES = [

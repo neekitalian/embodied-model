@@ -6,13 +6,15 @@ Home for the **real-time identity-preservation motion installation** (Tokyo gall
 ```
 index.html          Project dashboard (pipeline status + runbook)   →  served at /
 dance-graph.html    Interactive tool knowledge graph                →  served at /dance-graph
+portal.html         Record & render portal (webcam pose MVP)        →  served at /portal
 vercel.json         Static routing (cleanUrls)
 pipeline/           Python pipeline scaffolds + tests + Unity notes
 ```
 
 ## Web (Vercel)
 Static, self-contained, no build step. Import this repo at **vercel.com/new** → Deploy.
-Dashboard at `/`, tool graph at `/dance-graph`. Every push auto-redeploys.
+Dashboard at `/`, tool graph at `/dance-graph`, record-and-render portal at `/portal`. Every push auto-redeploys.
+The portal captures webcam pose in-browser (MediaPipe from CDN) and plays it back as a HumanML3D-22 skeleton you can download as JSON.
 Local preview: `npm start` → http://localhost:3000
 
 ## Pipeline

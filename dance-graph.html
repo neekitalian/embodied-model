@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>身份保留舞蹈装置 · 工具知识图谱</title>
+<title>Unnoticed Dance · Tool Knowledge Graph</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { height: 100%; background: #0f0f14; color: #e8e8ee;
-    font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; overflow: hidden; }
+    font-family: -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
   #wrap { position: fixed; inset: 0; }
   svg { width: 100%; height: 100%; cursor: grab; display: block; }
   svg.panning { cursor: grabbing; }
@@ -46,6 +46,7 @@
   #title { position: fixed; left: 14px; top: 14px; }
   #title h1 { font-size: 15px; font-weight: 600; }
   #title .s { font-size: 11px; color: #8a8b96; margin-top: 2px; }
+  #title a { color: #5fa9d8; text-decoration: none; }
   #hint { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
     font-size: 11px; color: #55565f; pointer-events: none; }
 </style>
@@ -58,8 +59,8 @@
 </div>
 
 <div id="title">
-  <h1>身份保留舞蹈装置 · 工具图谱</h1>
-  <div class="s">Real-Time Identity-Preservation Motion Installation</div>
+  <h1>Unnoticed Dance · Tool Graph</h1>
+  <div class="s">Real-Time Identity-Preservation Motion Installation · <a href="/">dashboard</a></div>
 </div>
 
 <div id="panel">
@@ -71,151 +72,151 @@
 </div>
 
 <div id="legend"></div>
-<div id="hint">点击节点看详情 · 拖拽移动 · 滚轮缩放 · 拖背景平移</div>
+<div id="hint">Click a node for details · drag to move · scroll to zoom · drag background to pan</div>
 
 <script>
-// ============ 图谱数据 ============
+// ============ graph data ============
 const G = {
-  root:  { c: "#ffd24d", name: "作品 / 项目" },
-  stage: { c: "#5fa9d8", name: "流水线阶段" },
-  tool:  { c: "#6ad07f", name: "工具 / 技术(选用)" },
-  ip:    { c: "#c58cf0", name: "核心 IP" },
-  avoid: { c: "#e07a7a", name: "避开 / 不用" },
-  track: { c: "#e8a660", name: "许可路线" },
+  root:  { c: "#ffd24d", name: "Work / Project" },
+  stage: { c: "#5fa9d8", name: "Pipeline stage" },
+  tool:  { c: "#6ad07f", name: "Tool (chosen)" },
+  ip:    { c: "#c58cf0", name: "Core IP" },
+  avoid: { c: "#e07a7a", name: "Avoid / don't use" },
+  track: { c: "#e8a660", name: "License track" },
 };
 
 const NODES = [
-  { id: "root", label: "身份保留舞蹈装置", en: "Unnoticed Dance — 东京画廊 + 人形机器人 SDK 原型", group: "root", r: 30,
-    detail: "访客在普通 RGB 摄像头前起舞 → 提取 3D 姿态 → 把 TA 的<b>身份特征</b>叠加到预录动作库上 → 风格化 VRM 形象重新演绎「你依然是你」。<b>单人可做、MacBook 可跑、每位访客 5–10 秒预算</b>(2D→3D 提升器可达每秒数百到数千帧)。" },
+  { id: "root", label: "Unnoticed Dance", en: "Identity-preservation motion installation — Tokyo gallery + robotics SDK", group: "root", r: 30,
+    detail: "A visitor dances in front of a plain RGB webcam &rarr; 3D pose is extracted &rarr; their <b>identity signature</b> is blended onto a pre-recorded motion library &rarr; a stylized VRM avatar re-expresses &ldquo;you are still you.&rdquo; Solo-buildable, runs on a MacBook, ~5&ndash;10s budget per visitor (2D&rarr;3D lifters run at hundreds&ndash;thousands of FPS)." },
 
-  // ==== 核心 IP ====
-  { id: "ip", label: "身份签名 + 分区 α 融合", en: "Identity Signature + Zone-decomposed α-blend", group: "ip", r: 22,
-    detail: "<b>你的 IP,其余全是通用件。</b>显式身份嵌入 + 分区特征空间时序 α 融合:便宜(纯矩阵运算)、确定性、可分区控制,能保证每帧预算、避免扩散方差。可投 SIGGRAPH Asia / CHI / Ars Electronica,并平滑迁移到机器人 SDK。" },
-  { id: "transmomo", label: "TransMoMo", en: "CVPR 2020 · 运动/结构/视角解耦", group: "tool", r: 13,
-    detail: "无监督不变性损失解耦<b>动作 / 结构 / 视角</b>——「与身体结构无关的签名」经典模板。2D 视频导向、2020 年工作,只当概念支架,不能即插即用。代码开源。" },
-  { id: "idpres", label: "IDPres", en: "IEEE TIFS 2024 · 骨架身份增强", group: "tool", r: 13,
-    detail: "基于骨骼,明确纳入目标的<b>个体化动作与骨骼信息</b>以增强身份表达。已发表方法,需重新实现。签名稳定性(几秒动作能否可辨识)先按其评估法做原型验证。" },
-  { id: "puzzle", label: "Motion Puzzle", en: "ACM TOG 2022 · 逐身体部位风格", group: "tool", r: 13,
-    detail: "<b>逐身体部位(分区)</b>风格迁移,证明按分区控制风格可保留内容——与你的分区分解设计最接近的参考。有代码。" },
+  // ==== core IP ====
+  { id: "ip", label: "Identity signature + zone α-blend", en: "the core IP", group: "ip", r: 22,
+    detail: "<b>Your IP; everything else is commodity.</b> Explicit identity embedding + zone-decomposed feature-space temporal α-blend: cheap (matrix ops), deterministic, per-zone controllable — guarantees a frame budget and avoids diffusion variance. Publishable at SIGGRAPH Asia / CHI / Ars Electronica, portable to the robotics SDK." },
+  { id: "transmomo", label: "TransMoMo", en: "CVPR 2020 · motion/structure/view disentangle", group: "tool", r: 13,
+    detail: "Unsupervised invariance losses disentangle <b>motion / structure / view</b> — the canonical template for a body-structure-invariant signature. 2D-video-centric, 2020 — conceptual scaffold, not drop-in. Code open." },
+  { id: "idpres", label: "IDPres", en: "IEEE TIFS 2024 · skeleton identity augmentation", group: "tool", r: 13,
+    detail: "Skeleton-based; explicitly folds in a target's <b>individualized motion + skeleton info</b> to strengthen identity. Published method, reimplement. Validate signature stability (does a few seconds yield a recognizable signature) with its evaluation." },
+  { id: "puzzle", label: "Motion Puzzle", en: "ACM TOG 2022 · per-body-part style", group: "tool", r: 13,
+    detail: "<b>Per-body-part (zone)</b> style transfer, proving zone-wise style control preserves content — the closest reference to your zone-decomposition. Code available." },
 
-  // ==== 阶段 1 采集 ====
-  { id: "s-cap", label: "① 采集", en: "Capture", group: "stage", r: 17,
-    detail: "采集永远不是瓶颈。控制画廊照明、固定相机、锁定曝光(MediaPipe 低光/遮挡下会掉)。艺术再现<b>无需度量深度</b>,单目 RGB 足够。" },
-  { id: "webcam", label: "RGB 摄像头", en: "1080p60 · 主力", group: "tool", r: 12,
-    detail: "1080p60 网络摄像头为主,仅需硬件。喂给 BlazePose 已足以支撑艺术性动作再现。" },
-  { id: "iphone", label: "iPhone 12 Pro+", en: "LightBuzz SDK · 可选深度", group: "tool", r: 11,
-    detail: "要深度就用 iPhone LiDAR + LightBuzz SDK(商业授权),给 2D+3D 关节点。深度留给机器人 SDK 验证线;画廊线不需要。" },
+  // ==== stage 1 capture ====
+  { id: "s-cap", label: "① Capture", en: "Capture", group: "stage", r: 17,
+    detail: "Never the bottleneck. Control gallery lighting, fix the camera, lock exposure (MediaPipe degrades in low light / occlusion). Artistic re-expression needs no metric depth — monocular RGB suffices." },
+  { id: "webcam", label: "RGB webcam", en: "1080p60 · primary", group: "tool", r: 12,
+    detail: "A 1080p60 webcam, hardware only. Feeding BlazePose is enough for an artistic re-expression." },
+  { id: "iphone", label: "iPhone 12 Pro+", en: "LightBuzz SDK · optional depth", group: "tool", r: 11,
+    detail: "For depth: iPhone LiDAR + LightBuzz SDK (commercial) gives 2D+3D joints. Reserve depth for the robotics SDK track; the gallery loop doesn't need it." },
 
-  // ==== 阶段 2 姿态 ====
-  { id: "s-pose", label: "② 姿态提取 / 3D 提升", en: "Pose & 2D→3D Lifting", group: "stage", r: 17,
-    detail: "两级管线最快、最适合 Mac。<b>提升器 117–9341 FPS</b>(RTX 4080, Scientific Reports 2025),因为喂的是紧凑 2D 关键点序列而非图像。导出 ONNX,推荐 Python 端推理并流式传关节。" },
-  { id: "mediapipe", label: "MediaPipe BlazePose", en: "GHUM Holistic · 2D+粗3D", group: "tool", r: 12,
-    detail: "输出 3D 关键点,可实时(移动端 ~15 FPS,桌面快得多)。Apache-2.0。假定被摄者正面朝相机;需一次性 T 型站姿校准。" },
-  { id: "agformer", label: "MotionAGFormer", en: "Apache-2.0 · 产品化首选", group: "tool", r: 12,
-    detail: "精度与 MotionBERT 相当但<b>计算量约一半</b>,更适合 MacBook;Apache-2.0 是产品化更安全的选择。用 S/XS 变体或因果短窗保护延迟预算。" },
-  { id: "motionbert", label: "MotionBERT", en: "研究/CC-BY-NC · 精度顶尖", group: "tool", r: 12,
-    detail: "精度顶尖(42.5M 参数, 174.7 GFLOPs),但较重且<b>非商业授权</b>→ 限制 SDK 线。Lite 版 243 帧窗口带来缓冲延迟,尽早端到端实测。" },
+  // ==== stage 2 pose ====
+  { id: "s-pose", label: "② Pose / 3D lifting", en: "Pose & 2D→3D Lifting", group: "stage", r: 17,
+    detail: "A two-stage pipeline is fastest and Mac-friendly. Lifters run <b>117&ndash;9341 FPS</b> (RTX 4080, Scientific Reports 2025) because they consume compact 2D keypoints, not images. Export ONNX; run inference in Python and stream joints." },
+  { id: "mediapipe", label: "MediaPipe BlazePose", en: "GHUM Holistic · 2D+rough 3D", group: "tool", r: 12,
+    detail: "Emits 3D keypoints in real time (~15 FPS mobile, far faster on desktop). Apache-2.0. Assumes front-facing capture; needs a one-time T-pose calibration." },
+  { id: "agformer", label: "MotionAGFormer", en: "Apache-2.0 · productization pick", group: "tool", r: 12,
+    detail: "Matches MotionBERT accuracy at <b>~half the compute</b> — better for a MacBook; Apache-2.0 is the safer productization choice. Use S/XS or a causal window to protect latency." },
+  { id: "motionbert", label: "MotionBERT", en: "research/CC-BY-NC · top accuracy", group: "tool", r: 12,
+    detail: "Best-in-class accuracy (42.5M params, 174.7 GFLOPs) but heavier and <b>non-commercial</b> → limits the SDK track. Lite's 243-frame window adds buffering delay; measure end-to-end early." },
 
-  // ==== 阶段 3 签名 ====
-  { id: "s-sig", label: "③ 身份签名提取", en: "Identity Signature", group: "stage", r: 17,
-    detail: "自行实现显式对比/解耦嵌入,基于 TransMoMo + IDPres,按 Motion Puzzle 方式分区解码。需要几秒钟丰富的访客动作才能形成稳定签名。" },
+  // ==== stage 3 signature ====
+  { id: "s-sig", label: "③ Identity signature", en: "Identity Signature", group: "stage", r: 17,
+    detail: "Your own explicit contrastive/disentangled embedding, grounded in TransMoMo + IDPres, decoded per zone à la Motion Puzzle. Needs a few seconds of varied visitor motion for a stable signature." },
 
-  // ==== 阶段 4 动作源 ====
-  { id: "s-src", label: "④ 目标动作源", en: "Target Motion Library", group: "stage", r: 17,
-    detail: "无文本提示 + 硬延迟预算 → 必须用<b>预录片段库</b>。多样性来自:精选数十段片段按访客动作特征选片 + 离线用 MCM-LDM 预烘焙风格化变体,让实时路径只跑快速 α 融合。" },
-  { id: "mixamo", label: "Mixamo", en: "Adobe · 商用安全 · 主库", group: "tool", r: 12,
-    detail: "免费、可用于商业产品(Adobe 条款)——<b>画廊与 SDK 产品线只用它</b>,是通往 SDK 的桥梁。" },
-  { id: "amass", label: "AMASS / HumanML3D", en: "仅非商业 · 研究/发表线", group: "tool", r: 12,
-    detail: "授权仅限<b>非商业</b>科研/教育/艺术项目,且<b>禁止训练用于商业的方法</b>。画廊装置可能算「非商业艺术项目」,但 SDK 不算——只留研究/论文线。" },
-  { id: "momask", label: "MoMask", en: "CVPR 2024 · 文本→动作 · 离线预烘焙", group: "tool", r: 12,
-    detail: "掩码建模 + 残差 VQ-VAE 的文本→动作生成,是你 Phase 2「Semantic Spectrum + 分区融合」的代码基座。<b>需文本提示 + 扩散级算力 → 只在离线(RunPod A100)预生成风格化目标动作库,绝不进直播 5–10 秒环。</b>训练于 HumanML3D → 继承 AMASS 非商业授权,仅画廊/论文线。" },
-  { id: "aist", label: "AIST++", en: "舞蹈数据集 · SMPL · 体裁标注", group: "tool", r: 12,
-    detail: "带舞蹈<b>体裁标注</b>的 SMPL 动作数据集——「按身体特征匹配舞蹈体裁」的目标库来源与匹配依据。SMPL .pkl → 需导出到 HumanML3D 22 关节。底层 AIST 视频库为非商业用途,归入画廊/研究线。" },
+  // ==== stage 4 target ====
+  { id: "s-src", label: "④ Target motion library", en: "Target Motion Library", group: "stage", r: 17,
+    detail: "No text prompt + hard latency budget → must be a <b>pre-recorded clip library</b>. Variety via curating dozens of clips selected on the visitor's own motion features, plus offline pre-baked stylized variants (MCM-LDM) so the live path only runs your fast α-blend." },
+  { id: "mixamo", label: "Mixamo", en: "Adobe · commercial-safe · primary lib", group: "tool", r: 12,
+    detail: "Free, usable in commercial products (Adobe terms) — <b>the gallery AND SDK library</b>, and the bridge to the SDK." },
+  { id: "amass", label: "AMASS / HumanML3D", en: "non-commercial only · research track", group: "tool", r: 12,
+    detail: "License is <b>non-commercial</b> research/education/art only, and bars training methods for commercial use. A gallery piece may qualify as a &ldquo;non-commercial artistic project,&rdquo; but the SDK does not — keep it to the research/paper track." },
+  { id: "momask", label: "MoMask", en: "CVPR 2024 · text→motion · offline pre-bake", group: "tool", r: 12,
+    detail: "Masked modeling + residual VQ-VAE text-to-motion; the code base of your Phase 2 (Semantic Spectrum + zone blend). Needs a text prompt + diffusion-class compute → <b>offline only (RunPod A100) to pre-bake a stylized library, never the live 5&ndash;10s loop.</b> Trains on HumanML3D → inherits AMASS non-commercial → gallery/paper track." },
+  { id: "aist", label: "AIST++", en: "dance dataset · SMPL · genre-labeled", group: "tool", r: 12,
+    detail: "Genre-labeled SMPL motion dataset — the library source and matching basis for &ldquo;dance genre matched to the body's characteristics.&rdquo; SMPL .pkl → export to HumanML3D 22 joints. Underlying AIST video DB is non-commercial → research/gallery track." },
 
-  // ==== 阶段 5 融合 ====
-  { id: "s-blend", label: "⑤ 身份应用 / 融合", en: "Identity Application / Blending", group: "stage", r: 17,
-    detail: "你的分区时序 α 融合是核心。边界不连续 → 时序 α 平滑 + 对输出关节做 <b>1€ filter</b> 减少抖动。" },
-  { id: "styleerd", label: "Style-ERD", en: "CVPR 2022 · 在线流式基线", group: "tool", r: 11,
-    detail: "Encoder-Recurrent-Decoder,已证实的<b>在线/流式</b>基线,运行效率优于离线方法。作为实时后备与对比基线。" },
-  { id: "diffusion", label: "MCM-LDM / LILAC", en: "离线预烘焙 · v2 前沿", group: "tool", r: 11,
-    detail: "MCM-LDM(CVPR 2024)最强离线任意风格迁移基线;LILAC(2025)滑窗流式后继。<b>只离线用于预烘焙</b>动作库,不进直播路径。" },
+  // ==== stage 5 blend ====
+  { id: "s-blend", label: "⑤ Identity application / blend", en: "Identity Application / Blending", group: "stage", r: 17,
+    detail: "Your zone-decomposed temporal α-blend is the core. Zone-boundary discontinuities → temporal-α smoothing + a <b>1€ filter</b> on output joints to cut jitter." },
+  { id: "styleerd", label: "Style-ERD", en: "CVPR 2022 · online streaming baseline", group: "tool", r: 11,
+    detail: "Encoder-Recurrent-Decoder, a proven <b>online/streaming</b> baseline that beats offline methods on runtime. Real-time fallback and comparison baseline." },
+  { id: "diffusion", label: "MCM-LDM / LILAC", en: "offline pre-bake · v2 frontier", group: "tool", r: 11,
+    detail: "MCM-LDM (CVPR 2024) is the strongest offline arbitrary-style-transfer baseline; LILAC (2025) extends it to streaming via sliding windows. <b>Offline pre-bake only</b> — not the live path." },
 
-  // ==== 阶段 6 重定向 ====
-  { id: "s-retarget", label: "⑥ 重定向", en: "Retargeting", group: "stage", r: 17,
-    detail: "Unity Mecanim 通过规范化<b>肌肉空间</b>映射任意 Humanoid 骨架,自动实时处理比例差异,零额外依赖。坑:脚滑(启用 Foot IK)、VRoid A 型站姿(强制 T 型)、核对肩/两骨脊椎、SMPL 根平移单独处理。" },
-  { id: "mecanim", label: "Unity Mecanim", en: "内置 · 肌肉空间重定向", group: "tool", r: 12,
-    detail: "标准 MediaPipe→Unity 形象仓库依赖的同一机制。学习式重定向(ReConForM/MoReFlow)留给 v2——多为 CUDA,非 Apple Silicon。" },
+  // ==== stage 6 retarget ====
+  { id: "s-retarget", label: "⑥ Retarget", en: "Retargeting", group: "stage", r: 17,
+    detail: "Unity Mecanim maps any Humanoid skeleton via normalized <b>Muscle Space</b> — proportion differences handled in real time, no extra deps. Gotchas: foot-skating (enable Foot IK), VRoid A-pose (enforce T-pose), verify shoulder/2-bone-spine, handle SMPL root translation separately." },
+  { id: "mecanim", label: "Unity Mecanim", en: "built-in · muscle-space retarget", group: "tool", r: 12,
+    detail: "The same mechanism standard MediaPipe→Unity avatar repos rely on. Learned retargeting (ReConForM/MoReFlow) is v2 — mostly CUDA, not Apple Silicon." },
 
-  // ==== 阶段 7 Unity 集成 ====
-  { id: "s-unity", label: "⑦ Unity 集成 / 数据流", en: "Streaming to Unity", group: "stage", r: 17,
-    detail: "Python(GPU 推理)与 Unity(渲染)保持<b>独立进程</b>,OSC/VMC 桥干净解耦,可独立更换渲染机(MacBook)与 GPU 机(RunPod A100)。localhost UDP 亚毫秒,延迟由模型决定。" },
+  // ==== stage 7 unity ====
+  { id: "s-unity", label: "⑦ Unity integration / stream", en: "Streaming to Unity", group: "stage", r: 17,
+    detail: "Keep Python (GPU inference) and Unity (render) as <b>separate processes</b>; the OSC/VMC bridge decouples them so you can swap the render machine (MacBook) independently of the GPU box (RunPod A100). Localhost UDP is sub-ms; latency is model-bound." },
   { id: "vmc", label: "VMC Protocol", en: "python-osc → EVMC4U + uOSC", group: "tool", r: 12,
-    detail: "OSC 协议开放,自己写发送端即可(不需付费 Virtual Motion Capture)。Python 发 HumanBodyBones 数据到 UDP 39539 → EVMC4U ExternalReceiver 应用到 VRM。全 MIT、纯 C#、跑 macOS。" },
+    detail: "OSC-based and open — write your own sender (no paid Virtual Motion Capture needed). Python sends HumanBodyBones data to UDP 39539 → EVMC4U ExternalReceiver applies it to the VRM. All MIT, pure C#, runs on macOS." },
 
-  // ==== 阶段 8 形象 ====
-  { id: "s-avatar", label: "⑧ 虚拟形象", en: "Avatar & Aesthetics", group: "stage", r: 17,
-    detail: "选<b>轮廓/比例中性</b>的形象让动作承载身份——命题是「你依然是你」,别用夸张预设盖过签名。固定相机/灯光 + 后处理(泛光/微 DOF/色彩分级)得画廊级画面;可分屏(原始 vs 再表达)。" },
-  { id: "vroid", label: "VRoid → VRM", en: "免费 · Mecanim 骨骼 + ARKit", group: "tool", r: 12,
-    detail: "VRoid Studio 免费,导出 VRM 自带 Mecanim 人形骨骼 + ~52 ARKit blendshape,有意设计的风格化角色(非骨骼、非写实)。经 UniVRM(MIT)接入。" },
-  { id: "toon", label: "Unity Toon Shader", en: "官方免费 · NPR 卡通渲染", group: "tool", r: 11,
-    detail: "官方、免费、支持所有管线(需 URP/HDRP)。2 段阴影渐变 + HDR 边缘光 + 描边 = 刻意的插画感,读作「艺术」而非「技术演示」。" },
+  // ==== stage 8 avatar ====
+  { id: "s-avatar", label: "⑧ Avatar", en: "Avatar & Aesthetics", group: "stage", r: 17,
+    detail: "Pick a <b>neutral-silhouette</b> avatar so motion carries identity — the thesis is &ldquo;you are still you,&rdquo; so don't let an exaggerated preset override the signature. Lock camera/lighting + post (bloom / subtle DOF / grade) for a gallery frame; consider split-screen (raw vs re-expressed)." },
+  { id: "vroid", label: "VRoid → VRM", en: "free · Mecanim bones + ARKit", group: "tool", r: 12,
+    detail: "VRoid Studio is free; VRM ships with Mecanim humanoid bones + ~52 ARKit blendshapes and intentional stylized characters (not skeletons, not photoreal). Imported via UniVRM (MIT)." },
+  { id: "toon", label: "Unity Toon Shader", en: "official free · NPR cel shading", group: "tool", r: 11,
+    detail: "Official, free, all pipelines (needs URP/HDRP). 2-step shade ramp + HDR rim light + outline = a deliberate illustrative look that reads as art, not a tech demo." },
 
-  // ==== 避开 ====
-  { id: "a-realsense", label: "RealSense LiDAR", en: "EOL · 2022-02-28 停订", group: "avoid", r: 12,
-    detail: "Intel 已停产 L515 LiDAR / T265 追踪 / RealSense ID 人脸线,仅剩 D4xx 立体相机。<b>把数月装置押在其上是供应/支持负债。</b>机器人级 RGB-D 改选 Orbbec Gemini。" },
-  { id: "a-rpm", label: "Ready Player Me", en: "2026-01-31 起停服", group: "avoid", r: 12,
-    detail: "官方论坛公告:服务自 2026-01-31 起不可用(Netflix 2025-12-19 收购后果)。<b>不要把形象层建在它上面。</b>" },
-  { id: "a-wham", label: "WHAM 直播", en: "在线仅 ~9 FPS", group: "avoid", r: 11,
-    detail: "世界坐标 SMPL,核心网络 200 FPS 但含预处理在线仅 ~9 FPS(A100)——排除单访客画廊循环。留给世界坐标 SDK/机器人线。" },
-  { id: "a-livediff", label: "扩散模型直播", en: "MCM-LDM/SMooDi/MotionDiffuse", group: "avoid", r: 11,
-    detail: "都是离线任意风格迁移,跑不出 5–10 秒预算,MacBook 上未经验证。<b>不要在画廊承诺现场扩散。</b>只离线预烘焙。" },
-  { id: "a-barracuda", label: "Barracuda", en: "已弃用 → 用 Sentis", group: "avoid", r: 10,
-    detail: "Unity 官方:Barracuda 已被 Sentis(2.1.x)取代。引擎内推理用 Sentis 并尽早验证吞吐,否则不如走 Python 端推理。" },
+  // ==== avoid ====
+  { id: "a-realsense", label: "RealSense LiDAR", en: "EOL · last order 2022-02-28", group: "avoid", r: 12,
+    detail: "Intel end-of-lifed L515 LiDAR / T265 tracking / RealSense ID face lines; only D4xx stereo remains. <b>Building a months-long installation on it is a supply/support liability.</b> Robotics-grade RGB-D → Orbbec Gemini instead." },
+  { id: "a-rpm", label: "Ready Player Me", en: "services down from 2026-01-31", group: "avoid", r: 12,
+    detail: "Official forum notice: services unavailable from 2026-01-31 (after Netflix's 2025-12-19 acquisition). <b>Don't build the avatar layer on it.</b>" },
+  { id: "a-wham", label: "WHAM live", en: "online ~9 FPS", group: "avoid", r: 11,
+    detail: "World-grounded SMPL; core net 200 FPS but ~9 FPS online with pre-processing (A100) — rules out the per-visitor gallery loop. Keep it for the world-grounded SDK/robotics track." },
+  { id: "a-livediff", label: "Diffusion live", en: "MCM-LDM/SMooDi/MotionDiffuse", group: "avoid", r: 11,
+    detail: "All offline arbitrary-style transfer, can't hit the 5&ndash;10s budget, unproven on a MacBook. <b>Don't promise live diffusion in the gallery</b> — offline pre-bake only." },
+  { id: "a-barracuda", label: "Barracuda", en: "deprecated → use Sentis", group: "avoid", r: 10,
+    detail: "Unity: Barracuda is replaced by Sentis (2.1.x). For in-engine inference use Sentis and validate throughput early, else prefer Python-side inference." },
 
-  // ==== 路线 ====
-  { id: "t-gallery", label: "画廊 / 论文线", en: "Gallery + Publication", group: "track", r: 16,
-    detail: "可用 Mixamo + AMASS/HumanML3D(算「非商业艺术项目」)+ MotionBERT。发表:SIGGRAPH Asia / CHI / Ars Electronica。" },
-  { id: "t-sdk", label: "SDK 产品线", en: "Robotics SDK Product", group: "track", r: 16,
-    detail: "<b>商业 → 只用 Mixamo + MotionAGFormer(Apache-2.0)</b>,禁 AMASS、禁 MotionBERT。两条线保持干净不串——这是真实的法律岔口。" },
+  // ==== tracks ====
+  { id: "t-gallery", label: "Gallery / paper track", en: "Gallery + Publication", group: "track", r: 16,
+    detail: "May use Mixamo + AMASS/HumanML3D (as a &ldquo;non-commercial artistic project&rdquo;) + MotionBERT. Publish: SIGGRAPH Asia / CHI / Ars Electronica." },
+  { id: "t-sdk", label: "SDK product track", en: "Robotics SDK Product", group: "track", r: 16,
+    detail: "Commercial → Mixamo + MotionAGFormer (Apache-2.0) only; no AMASS, no MotionBERT. Keep the two tracks clean — a real legal fork." },
 ];
 
 const EDGES = [
-  // 主干:作品 → IP + 各阶段
-  ["root","ip","核心",""], ["root","s-cap","",""],
-  ["ip","transmomo","锚定",""], ["ip","idpres","锚定",""], ["ip","puzzle","参照",""],
-  ["ip","s-sig","实现",""],
+  // trunk: work -> IP + stages
+  ["root","ip","core",""], ["root","s-cap","",""],
+  ["ip","transmomo","anchors",""], ["ip","idpres","anchors",""], ["ip","puzzle","ref",""],
+  ["ip","s-sig","implements",""],
 
-  // 流水线顺序
+  // pipeline order
   ["s-cap","s-pose","flow","→"], ["s-pose","s-sig","flow","→"], ["s-sig","s-src","flow","→"],
   ["s-src","s-blend","flow","→"], ["s-blend","s-retarget","flow","→"],
   ["s-retarget","s-unity","flow","→"], ["s-unity","s-avatar","flow","→"],
 
-  // 阶段 → 工具
+  // stage -> tools
   ["s-cap","webcam","",""], ["s-cap","iphone","",""],
   ["s-pose","mediapipe","",""], ["s-pose","agformer","",""], ["s-pose","motionbert","",""],
   ["s-src","mixamo","",""], ["s-src","amass","",""],
-  ["s-src","momask","离线生成",""], ["s-src","aist","体裁库",""],
-  ["ip","momask","代码基座",""], ["aist","s-sig","体裁匹配",""],
-  ["s-blend","ip","核心方法",""], ["s-blend","styleerd","后备",""], ["s-blend","diffusion","离线",""],
+  ["s-src","momask","offline gen",""], ["s-src","aist","genre lib",""],
+  ["ip","momask","code base",""], ["aist","s-sig","genre match",""],
+  ["s-blend","ip","core method",""], ["s-blend","styleerd","fallback",""], ["s-blend","diffusion","offline",""],
   ["s-retarget","mecanim","",""],
   ["s-unity","vmc","",""],
   ["s-avatar","vroid","",""], ["s-avatar","toon","",""],
 
-  // 避开(反向警示)
-  ["s-cap","a-realsense","避开","avoid"], ["s-avatar","a-rpm","避开","avoid"],
-  ["s-pose","a-wham","避开","avoid"], ["s-blend","a-livediff","避开","avoid"],
-  ["s-pose","a-barracuda","避开","avoid"],
+  // avoid (warnings)
+  ["s-cap","a-realsense","avoid","avoid"], ["s-avatar","a-rpm","avoid","avoid"],
+  ["s-pose","a-wham","avoid","avoid"], ["s-blend","a-livediff","avoid","avoid"],
+  ["s-pose","a-barracuda","avoid","avoid"],
 
-  // 路线归属
-  ["t-sdk","mixamo","只用",""], ["t-sdk","agformer","只用",""],
-  ["t-gallery","amass","可用",""], ["t-gallery","motionbert","可用",""],
-  ["t-gallery","momask","可用",""], ["t-gallery","aist","可用",""],
-  ["t-sdk","amass","禁用","avoid"], ["t-sdk","motionbert","禁用","avoid"],
-  ["t-sdk","momask","禁用","avoid"], ["t-sdk","aist","禁用","avoid"],
+  // track membership
+  ["t-sdk","mixamo","only",""], ["t-sdk","agformer","only",""],
+  ["t-gallery","amass","ok",""], ["t-gallery","motionbert","ok",""],
+  ["t-gallery","momask","ok",""], ["t-gallery","aist","ok",""],
+  ["t-sdk","amass","banned","avoid"], ["t-sdk","motionbert","banned","avoid"],
+  ["t-sdk","momask","banned","avoid"], ["t-sdk","aist","banned","avoid"],
   ["root","t-gallery","",""], ["root","t-sdk","",""],
 ];
 
-// ============ 力导向布局 ============
+// ============ force layout ============
 const svg = document.getElementById("svg");
 const scene = document.getElementById("scene");
 const gEdges = document.getElementById("edges");
@@ -225,7 +226,6 @@ const gNodes = document.getElementById("nodes");
 let W = window.innerWidth, H = window.innerHeight;
 const nodeById = {};
 NODES.forEach((n, i) => {
-  // 环形初始播撒(确定性,不用随机)
   const a = (i / NODES.length) * Math.PI * 2;
   n.x = W/2 + Math.cos(a) * 260;
   n.y = H/2 + Math.sin(a) * 220;
@@ -233,12 +233,10 @@ NODES.forEach((n, i) => {
   nodeById[n.id] = n;
 });
 
-// 邻接表
 const adj = {};
 NODES.forEach(n => adj[n.id] = new Set());
 EDGES.forEach(e => { adj[e[0]].add(e[1]); adj[e[1]].add(e[0]); });
 
-// 建 DOM
 const edgeEls = EDGES.map(e => {
   const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
   let cls = "edge";
@@ -269,11 +267,9 @@ const nodeEls = NODES.map(n => {
   return { n, g, c, t };
 });
 
-// 力模拟
 let alpha = 1;
 function tick() {
   const REP = 5200, SPRING = 0.035, GRAV = 0.018, DAMP = 0.86;
-  // 斥力
   for (let i = 0; i < NODES.length; i++) {
     const a = NODES[i];
     for (let j = i+1; j < NODES.length; j++) {
@@ -286,7 +282,6 @@ function tick() {
       a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
     }
   }
-  // 弹簧
   EDGES.forEach(e => {
     const a = nodeById[e[0]], b = nodeById[e[1]];
     let dx = b.x - a.x, dy = b.y - a.y;
@@ -296,7 +291,6 @@ function tick() {
     const fx = (dx/d)*f, fy = (dy/d)*f;
     a.vx += fx; a.vy += fy; b.vx -= fx; b.vy -= fy;
   });
-  // 向心 + 积分
   NODES.forEach(n => {
     if (n.fixed) return;
     n.vx += (W/2 - n.x) * GRAV * 0.05;
@@ -319,7 +313,6 @@ function render() {
   nodeEls.forEach(({n, g}) => g.setAttribute("transform", `translate(${n.x},${n.y})`));
 }
 
-// ============ 选择 / 高亮 ============
 let selId = null;
 function selectNode(id) {
   selId = id;
@@ -350,13 +343,9 @@ function clearSel() {
   edgeEls.forEach(({line, lbl}) => { line.classList.remove("hot","dim"); if (lbl) lbl.classList.remove("dim"); });
 }
 
-// ============ 交互:拖拽节点 / 平移 / 缩放 ============
 let view = { x: 0, y: 0, k: 1 };
 function applyView() { scene.setAttribute("transform", `translate(${view.x},${view.y}) scale(${view.k})`); }
-
-function toScene(clientX, clientY) {
-  return { x: (clientX - view.x) / view.k, y: (clientY - view.y) / view.k };
-}
+function toScene(cx, cy) { return { x: (cx - view.x) / view.k, y: (cy - view.y) / view.k }; }
 
 let drag = null, pan = null, moved = false;
 svg.addEventListener("mousedown", ev => {
@@ -401,7 +390,6 @@ svg.addEventListener("wheel", ev => {
 
 window.addEventListener("resize", () => { W = window.innerWidth; H = window.innerHeight; });
 
-// 图例
 const legend = document.getElementById("legend");
 Object.values(G).forEach(g => {
   const row = document.createElement("div"); row.className = "row";

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unnoticed Dance · Record &amp; Render Portal</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --bg:#0f0f14; --panel:#16161e; --line:#262631; --ink:#e8e8ee; --dim:#9a9ba6;
+    --blue:#5fa9d8; --green:#6ad07f; --gold:#ffd24d; --red:#e07a7a; }
+  body { background:var(--bg); color:var(--ink); font-family:-apple-system,"Segoe UI",sans-serif;
+    min-height:100vh; padding:20px; }
+  a { color:var(--blue); text-decoration:none; } a:hover{ text-decoration:underline; }
+  header { max-width:1100px; margin:0 auto 14px; }
+  h1 { font-size:20px; } .sub { color:var(--dim); font-size:13px; margin-top:3px; }
+
+  #banner { max-width:1100px; margin:0 auto 14px; padding:11px 15px; border-radius:10px;
+    font-size:13px; display:none; }
+  #banner.err { display:block; background:#2a1618; border:1px solid #5a2f2f; color:#f0b8b8; }
+  #banner.info { display:block; background:#161d22; border:1px solid #24404e; color:#a9d4e6; }
+
+  .cols { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:820px){ .cols{ grid-template-columns:1fr; } }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin-bottom:12px; }
+
+  .stage { position:relative; width:100%; aspect-ratio:4/3; background:#000; border-radius:10px; overflow:hidden; }
+  video, canvas.overlay { position:absolute; inset:0; width:100%; height:100%; }
+  video { object-fit:cover; transform:scaleX(-1); }
+  canvas.render { width:100%; aspect-ratio:4/3; background:#0b0b10; border-radius:10px; display:block; }
+
+  .row { display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin-top:13px; }
+  button { background:#1e1e28; color:var(--ink); border:1px solid var(--line); border-radius:9px;
+    padding:9px 15px; font-size:13.5px; cursor:pointer; }
+  button:hover:not(:disabled){ border-color:var(--blue); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.primary { background:var(--green); color:#0f0f14; border-color:var(--green); font-weight:600; }
+  button.rec { background:var(--red); color:#0f0f14; border-color:var(--red); font-weight:600; }
+  select, input[type=range] { accent-color:var(--blue); }
+  select { background:#1e1e28; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:7px 9px; font-size:13px; }
+  .meta { font-size:12px; color:var(--dim); margin-top:9px; min-height:16px; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#555; margin-right:6px; vertical-align:middle; }
+  .dot.live { background:var(--green); } .dot.rec { background:var(--red); animation:pulse 1s infinite; }
+  @keyframes pulse { 50%{ opacity:.3; } }
+  footer { max-width:1100px; margin:18px auto 0; color:#55565f; font-size:11.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Record &amp; Render Portal</h1>
+  <div class="sub">Capture your movement on webcam → play it back as a 3D skeleton. A browser MVP of the installation's Stage 1. · <a href="/">dashboard</a> · <a href="/dance-graph">tool graph</a></div>
+</header>
+
+<div id="banner"></div>
+
+<div class="cols">
+  <!-- ============ RECORD ============ -->
+  <div class="card">
+    <h2><span class="dot" id="camdot"></span>Record</h2>
+    <div class="stage">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas class="overlay" id="overlay"></canvas>
+    </div>
+    <div class="row">
+      <button class="rec" id="recBtn" disabled>● Record</button>
+      <label style="font-size:13px;color:var(--dim)">for
+        <select id="dur"><option value="4">4s</option><option value="6" selected>6s</option><option value="8">8s</option><option value="10">10s</option></select>
+      </label>
+      <button id="stopBtn" disabled>Stop</button>
+    </div>
+    <div class="meta" id="recMeta">Initializing camera &amp; pose model…</div>
+  </div>
+
+  <!-- ============ RENDER ============ -->
+  <div class="card">
+    <h2>Render</h2>
+    <canvas class="render" id="render" width="640" height="480"></canvas>
+    <div class="row">
+      <button class="primary" id="playBtn" disabled>▶ Play</button>
+      <button id="loopBtn" disabled>Loop: on</button>
+      <button id="spinBtn" disabled>Spin: off</button>
+      <button id="dlBtn" disabled>⬇ JSON</button>
+    </div>
+    <div class="row"><input type="range" id="scrub" min="0" max="0" value="0" style="width:100%" disabled></div>
+    <div class="meta" id="renderMeta">No recording yet — record a clip on the left.</div>
+  </div>
+</div>
+
+<footer>
+  Runs entirely in your browser (webcam never leaves the page). Pose via MediaPipe Tasks Vision loaded from CDN —
+  needs a camera and network; best in Chrome/Edge. The recorded clip is HumanML3D-22, y-up — the same format the
+  Python pipeline consumes, so “⬇ JSON” drops straight into <code>view_clip.py</code> / the blend.
+</footer>
+
+<script type="module">
+import { FilesetResolver, PoseLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+// ---------- skeleton definitions (mirror pipeline/hml_skeleton.py) ----------
+const MP = { NOSE:0, L_SH:11, R_SH:12, L_EL:13, R_EL:14, L_WR:15, R_WR:16,
+  L_HIP:23, R_HIP:24, L_KN:25, R_KN:26, L_AN:27, R_AN:28, L_FOOT:31, R_FOOT:32 };
+const H = { pelvis:0,left_hip:1,right_hip:2,spine1:3,left_knee:4,right_knee:5,spine2:6,
+  left_ankle:7,right_ankle:8,spine3:9,left_foot:10,right_foot:11,neck:12,left_collar:13,
+  right_collar:14,head:15,left_shoulder:16,right_shoulder:17,left_elbow:18,right_elbow:19,
+  left_wrist:20,right_wrist:21 };
+const PARENTS = [-1,0,0,0,1,2,3,4,5,6,7,8,9,9,9,12,13,14,16,17,18,19];
+const BONES = []; for (let j=1;j<22;j++) BONES.push([PARENTS[j], j]);
+
+function v(lm,i){ return [lm[i].x, lm[i].y, lm[i].z]; }
+function mid(a,b){ return [(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2]; }
+function lerp(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+
+// map a MediaPipe 33-landmark list to HumanML3D 22 (works for image- or world-space)
+function mp33to22(lm){
+  const j = Array.from({length:22}, ()=>[0,0,0]);
+  const lhip=v(lm,MP.L_HIP), rhip=v(lm,MP.R_HIP), lsh=v(lm,MP.L_SH), rsh=v(lm,MP.R_SH);
+  const pelvis=mid(lhip,rhip), neck=mid(lsh,rsh);
+  j[H.pelvis]=pelvis; j[H.left_hip]=lhip; j[H.right_hip]=rhip;
+  j[H.left_knee]=v(lm,MP.L_KN); j[H.right_knee]=v(lm,MP.R_KN);
+  j[H.left_ankle]=v(lm,MP.L_AN); j[H.right_ankle]=v(lm,MP.R_AN);
+  j[H.left_foot]=v(lm,MP.L_FOOT); j[H.right_foot]=v(lm,MP.R_FOOT);
+  j[H.spine1]=lerp(pelvis,neck,0.25); j[H.spine2]=lerp(pelvis,neck,0.5); j[H.spine3]=lerp(pelvis,neck,0.75);
+  j[H.neck]=neck;
+  j[H.left_shoulder]=lsh; j[H.right_shoulder]=rsh;
+  j[H.left_elbow]=v(lm,MP.L_EL); j[H.right_elbow]=v(lm,MP.R_EL);
+  j[H.left_wrist]=v(lm,MP.L_WR); j[H.right_wrist]=v(lm,MP.R_WR);
+  j[H.left_collar]=lerp(neck,lsh,0.4); j[H.right_collar]=lerp(neck,rsh,0.4);
+  const nose=v(lm,MP.NOSE); j[H.head]=lerp(neck,nose,1.3);
+  return j;
+}
+// world frame (y-down) -> y-up, hip-centered
+function toYupHip(j22){
+  const p = j22[H.pelvis];
+  return j22.map(p2 => [p2[0]-p[0], -(p2[1]-p[1]), -(p2[2]-p[2])]);
+}
+
+// ---------- state ----------
+const banner=document.getElementById("banner");
+function showBanner(msg,cls){ banner.textContent=msg; banner.className=cls; }
+const video=document.getElementById("video"), overlay=document.getElementById("overlay");
+const octx=overlay.getContext("2d");
+const rcv=document.getElementById("render"), rctx=rcv.getContext("2d");
+const recBtn=document.getElementById("recBtn"), stopBtn=document.getElementById("stopBtn");
+const playBtn=document.getElementById("playBtn"), loopBtn=document.getElementById("loopBtn");
+const spinBtn=document.getElementById("spinBtn"), dlBtn=document.getElementById("dlBtn");
+const scrub=document.getElementById("scrub"), durSel=document.getElementById("dur");
+const recMeta=document.getElementById("recMeta"), renderMeta=document.getElementById("renderMeta");
+const camdot=document.getElementById("camdot");
+
+let landmarker=null, camReady=false, recording=false, recFrames=[], recStart=0, recStopAt=0;
+let clip=null, clipFps=30;
+
+// ---------- init camera + model ----------
+async function init(){
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:640, height:480 }, audio:false });
+    video.srcObject = stream;
+    await new Promise(r => video.onloadedmetadata = r);
+    overlay.width = video.videoWidth; overlay.height = video.videoHeight;
+    camReady = true; camdot.className = "dot live";
+  } catch(e){
+    showBanner("Camera unavailable: "+e.message+" — allow camera access and reload.","err");
+    recMeta.textContent = "Camera blocked."; return;
+  }
+  try {
+    const vision = await FilesetResolver.forVisionTasks(
+      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+    landmarker = await PoseLandmarker.createFromOptions(vision, {
+      baseOptions:{ modelAssetPath:
+        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+        delegate:"GPU" },
+      runningMode:"VIDEO", numPoses:1 });
+  } catch(e){
+    showBanner("Pose model failed to load: "+e.message+" — check your network (CDN blocked?) and reload.","err");
+    recMeta.textContent = "Model load failed."; return;
+  }
+  recBtn.disabled = false;
+  recMeta.textContent = "Ready. Stand back so your whole body is in frame, then Record.";
+  requestAnimationFrame(loop);
+}
+
+// ---------- live loop ----------
+let lastVideoTime = -1;
+function loop(){
+  if (landmarker && camReady && video.readyState >= 2 && video.currentTime !== lastVideoTime){
+    lastVideoTime = video.currentTime;
+    const res = landmarker.detectForVideo(video, performance.now());
+    octx.clearRect(0,0,overlay.width,overlay.height);
+    if (res.landmarks && res.landmarks[0]){
+      drawOverlay(mp33to22(res.landmarks[0]));
+      if (recording && res.worldLandmarks && res.worldLandmarks[0]){
+        recFrames.push(toYupHip(mp33to22(res.worldLandmarks[0])));
+        const t = (performance.now()-recStart)/1000;
+        recMeta.innerHTML = `<span class="dot rec"></span>Recording… ${t.toFixed(1)}s · ${recFrames.length} frames`;
+        if (performance.now() >= recStopAt) stopRecording();
+      }
+    } else if (recording){
+      recMeta.innerHTML = `<span class="dot rec"></span>Recording… (no body detected — step into frame)`;
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+// image-space overlay (normalized 0..1, y-down; mirror x to match the mirrored video)
+function drawOverlay(j22){
+  const w=overlay.width, h=overlay.height;
+  octx.lineWidth = 3; octx.strokeStyle = "#6ad07f";
+  for (const [a,b] of BONES){
+    octx.beginPath();
+    octx.moveTo((1-j22[a][0])*w, j22[a][1]*h);
+    octx.lineTo((1-j22[b][0])*w, j22[b][1]*h);
+    octx.stroke();
+  }
+  octx.fillStyle = "#ffd24d";
+  for (const p of j22){ octx.beginPath(); octx.arc((1-p[0])*w, p[1]*h, 3.5, 0, 7); octx.fill(); }
+}
+
+// ---------- record ----------
+recBtn.onclick = () => {
+  recFrames = []; recording = true;
+  recStart = performance.now();
+  recStopAt = recStart + parseFloat(durSel.value)*1000;
+  recBtn.disabled = true; stopBtn.disabled = false; durSel.disabled = true;
+};
+stopBtn.onclick = stopRecording;
+function stopRecording(){
+  if (!recording) return;
+  recording = false; recBtn.disabled = false; stopBtn.disabled = true; durSel.disabled = false;
+  if (recFrames.length < 2){
+    recMeta.textContent = "Too few frames captured — make sure your body is visible, then retry.";
+    return;
+  }
+  const secs = (performance.now()-recStart)/1000;
+  clipFps = Math.max(1, Math.round(recFrames.length/secs));
+  clip = recFrames.slice();
+  recMeta.textContent = `Captured ${clip.length} frames (~${clipFps} fps). Rendered on the right →`;
+  setupPlayback();
+}
+
+// ---------- render / playback ----------
+let fit=null, playing=false, spin=false, loopOn=true, frameIdx=0, spinAng=0, lastT=0;
+function computeFit(frames){
+  let mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9;
+  for (const f of frames) for (const p of f){
+    mnx=Math.min(mnx,p[0]); mxx=Math.max(mxx,p[0]); mny=Math.min(mny,p[1]); mxy=Math.max(mxy,p[1]);
+  }
+  const spanX=Math.max(1e-3,mxx-mnx), spanY=Math.max(1e-3,mxy-mny);
+  const w=rcv.width, h=rcv.height;
+  const scale = 0.8*Math.min(w/spanX, h/spanY);
+  return { scale, cx:w/2 - (mnx+mxx)/2*scale, cy:h/2 + (mny+mxy)/2*scale };
+}
+function setupPlayback(){
+  fit = computeFit(clip);
+  scrub.max = clip.length-1; scrub.value = 0; scrub.disabled = false;
+  playBtn.disabled=false; loopBtn.disabled=false; spinBtn.disabled=false; dlBtn.disabled=false;
+  frameIdx=0; playing=true; lastT=performance.now();
+  renderMeta.textContent = `${clip.length} frames · ${clipFps} fps`;
+  requestAnimationFrame(playLoop);
+}
+function drawFrame(j22){
+  rctx.fillStyle="#0b0b10"; rctx.fillRect(0,0,rcv.width,rcv.height);
+  const ca=Math.cos(spinAng), sa=Math.sin(spinAng);
+  const proj = p => {
+    const x = p[0]*ca + p[2]*sa;          // rotate around vertical (y) axis
+    return [ fit.cx + x*fit.scale, fit.cy - p[1]*fit.scale, p[0]*(-sa)+p[2]*ca ];
+  };
+  const P = j22.map(proj);
+  // depth-sorted-ish: draw bones with depth shading
+  rctx.lineWidth=4; rctx.lineCap="round";
+  for (const [a,b] of BONES){
+    const zavg=(P[a][2]+P[b][2])/2;
+    const t=Math.max(0,Math.min(1,(zavg+0.5)));            // near=bright
+    rctx.strokeStyle=`rgba(${90+80*t|0},${170+40*t|0},${120+60*t|0},${0.55+0.45*t})`;
+    rctx.beginPath(); rctx.moveTo(P[a][0],P[a][1]); rctx.lineTo(P[b][0],P[b][1]); rctx.stroke();
+  }
+  rctx.fillStyle="#ffd24d";
+  for (const p of P){ rctx.beginPath(); rctx.arc(p[0],p[1],4,0,7); rctx.fill(); }
+}
+function playLoop(){
+  if (!clip) return;
+  const now=performance.now();
+  if (playing && now-lastT >= 1000/clipFps){
+    lastT=now; frameIdx++;
+    if (frameIdx>=clip.length){ if (loopOn) frameIdx=0; else { frameIdx=clip.length-1; playing=false; playBtn.textContent="▶ Play"; } }
+    scrub.value=frameIdx;
+  }
+  if (spin) spinAng += 0.03;
+  drawFrame(clip[frameIdx]);
+  requestAnimationFrame(playLoop);
+}
+playBtn.onclick = () => { playing=!playing; playBtn.textContent = playing?"⏸ Pause":"▶ Play"; lastT=performance.now(); };
+loopBtn.onclick = () => { loopOn=!loopOn; loopBtn.textContent = "Loop: "+(loopOn?"on":"off"); };
+spinBtn.onclick = () => { spin=!spin; spinBtn.textContent = "Spin: "+(spin?"on":"off"); };
+scrub.oninput = () => { frameIdx=+scrub.value; playing=false; playBtn.textContent="▶ Play"; };
+dlBtn.onclick = () => {
+  const blob = new Blob([JSON.stringify({ format:"HumanML3D-22", axes:"y-up, hip-centered",
+    fps:clipFps, frames:clip.length, joints:clip })], { type:"application/json" });
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="visitor_clip.json"; a.click(); URL.revokeObjectURL(a.href);
+};
+
+init();
+</script>
+</body>
+</html>
