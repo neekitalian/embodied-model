@@ -11,16 +11,15 @@
   body { background:var(--bg); color:var(--ink); font-family:-apple-system,"Segoe UI",sans-serif;
     min-height:100vh; padding:20px; }
   a { color:var(--blue); text-decoration:none; } a:hover{ text-decoration:underline; }
-  header { max-width:1100px; margin:0 auto 14px; }
+  header { max-width:1200px; margin:0 auto 14px; }
   h1 { font-size:20px; } .sub { color:var(--dim); font-size:13px; margin-top:3px; }
 
-  #banner { max-width:1100px; margin:0 auto 14px; padding:11px 15px; border-radius:10px;
-    font-size:13px; display:none; }
+  #banner { max-width:1200px; margin:0 auto 14px; padding:11px 15px; border-radius:10px; font-size:13px; display:none; }
   #banner.err { display:block; background:#2a1618; border:1px solid #5a2f2f; color:#f0b8b8; }
   #banner.info { display:block; background:#161d22; border:1px solid #24404e; color:#a9d4e6; }
 
-  .cols { max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-  @media (max-width:820px){ .cols{ grid-template-columns:1fr; } }
+  .cols { max-width:1200px; margin:0 auto; display:grid; grid-template-columns:360px 1fr; gap:16px; align-items:start; }
+  @media (max-width:860px){ .cols{ grid-template-columns:1fr; } }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
   .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin-bottom:12px; }
 
@@ -28,7 +27,6 @@
   video, #upvideo, canvas.overlay { position:absolute; inset:0; width:100%; height:100%; }
   #video { object-fit:cover; transform:scaleX(-1); }
   #upvideo { object-fit:contain; background:#000; transform:none; }
-  canvas.render { width:100%; aspect-ratio:4/3; background:#0b0b10; border-radius:10px; display:block; }
 
   .row { display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin-top:13px; }
   button, .filebtn { background:#1e1e28; color:var(--ink); border:1px solid var(--line); border-radius:9px;
@@ -44,13 +42,22 @@
   .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#555; margin-right:6px; vertical-align:middle; }
   .dot.live { background:var(--green); } .dot.rec { background:var(--red); animation:pulse 1s infinite; }
   @keyframes pulse { 50%{ opacity:.3; } }
-  footer { max-width:1100px; margin:18px auto 0; color:#55565f; font-size:11.5px; }
+
+  #matched { font-size:13px; color:var(--ink); margin-top:6px; }
+  #matched b { color:var(--gold); }
+  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-top:12px; }
+  .tile { background:#0b0b10; border:1px solid var(--line); border-radius:10px; padding:6px; }
+  .tile canvas { width:100%; height:auto; display:block; border-radius:6px; }
+  .tcap { font-size:11.5px; color:var(--dim); text-align:center; margin-top:5px; }
+  .tile.orig { border-color:#3a4a5a; } .tile.orig .tcap { color:var(--blue); font-weight:600; }
+  .tile.match { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset; } .tile.match .tcap { color:var(--gold); font-weight:600; }
+  footer { max-width:1200px; margin:18px auto 0; color:#55565f; font-size:11.5px; }
 </style>
 </head>
 <body>
 <header>
   <h1>Record &amp; Render Portal</h1>
-  <div class="sub">Record on webcam <em>or upload a video</em> → play it back as a 3D skeleton. A browser MVP of the installation's Stage 1. · <a href="/">dashboard</a> · <a href="/dance-graph">tool graph</a></div>
+  <div class="sub">Record on webcam <em>or upload a video</em> → see your motion rendered as the original skeleton and re-styled across dance genres. Browser MVP of the installation. · <a href="/">dashboard</a> · <a href="/dance-graph">tool graph</a></div>
 </header>
 
 <div id="banner"></div>
@@ -75,37 +82,37 @@
       <label class="filebtn dis" id="fileLabel">⬆ Upload a video
         <input type="file" accept="video/*" id="videoFile" hidden disabled>
       </label>
-      <span style="font-size:12px;color:var(--dim)">or drop in a clip instead of the webcam</span>
+      <span style="font-size:12px;color:var(--dim)">or drop in a clip</span>
     </div>
     <div class="meta" id="recMeta">Initializing camera &amp; pose model…</div>
   </div>
 
-  <!-- ============ RENDER ============ -->
+  <!-- ============ RENDER: original + genre versions ============ -->
   <div class="card">
-    <h2>Render</h2>
-    <canvas class="render" id="render" width="640" height="480"></canvas>
+    <h2>Render — original + genre versions</h2>
     <div class="row">
       <button class="primary" id="playBtn" disabled>▶ Play</button>
       <button id="loopBtn" disabled>Loop: on</button>
       <button id="spinBtn" disabled>Spin: off</button>
       <button id="dlBtn" disabled>⬇ JSON</button>
+      <input type="range" id="scrub" min="0" max="0" value="0" style="flex:1;min-width:120px" disabled>
     </div>
-    <div class="row"><input type="range" id="scrub" min="0" max="0" value="0" style="width:100%" disabled></div>
-    <div class="meta" id="renderMeta">No clip yet — record or upload one on the left.</div>
+    <div id="matched" class="meta">No clip yet — record or upload one on the left.</div>
+    <div id="grid"></div>
   </div>
 </div>
 
 <footer>
-  Runs entirely in your browser (nothing is uploaded to a server). Pose via MediaPipe Tasks Vision loaded from CDN —
-  needs network; best in Chrome/Edge. Uploaded video is processed locally by playing it through. The recorded clip is
-  HumanML3D-22, y-up — the same format the Python pipeline consumes, so “⬇ JSON” drops straight into
-  <code>view_clip.py</code> / the blend.
+  Runs entirely in your browser (nothing is uploaded). Pose via MediaPipe Tasks Vision (CDN). The genre tiles are
+  <b>stylized previews</b> — the same captured motion re-shaped by each genre's motion signature (energy, verticality,
+  arm-lead, expansiveness, bounce, turn). They are a heuristic proxy, <b>not</b> the identity-preserving zone-α blend,
+  which runs in the local pipeline. “Original” is your true captured motion; “⬇ JSON” exports it (HumanML3D-22, y-up).
 </footer>
 
 <script type="module">
 import { FilesetResolver, PoseLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-// ---------- skeleton definitions (mirror pipeline/hml_skeleton.py) ----------
+// ---------- skeleton defs (mirror pipeline/hml_skeleton.py) ----------
 const MP = { NOSE:0, L_SH:11, R_SH:12, L_EL:13, R_EL:14, L_WR:15, R_WR:16,
   L_HIP:23, R_HIP:24, L_KN:25, R_KN:26, L_AN:27, R_AN:28, L_FOOT:31, R_FOOT:32 };
 const H = { pelvis:0,left_hip:1,right_hip:2,spine1:3,left_knee:4,right_knee:5,spine2:6,
@@ -114,11 +121,28 @@ const H = { pelvis:0,left_hip:1,right_hip:2,spine1:3,left_knee:4,right_knee:5,sp
   left_wrist:20,right_wrist:21 };
 const PARENTS = [-1,0,0,0,1,2,3,4,5,6,7,8,9,9,9,12,13,14,16,17,18,19];
 const BONES = []; for (let j=1;j<22;j++) BONES.push([PARENTS[j], j]);
-const MAX_FRAMES = 900;   // ~30s cap on an uploaded clip
+const MAX_FRAMES = 900;
+
+// features order: [energy, verticality, upperRatio, expansive, rhythm, armElev, sharpness, spin]
+const FEATS = ["energy","verticality","upperRatio","expansive","rhythm","armElev","sharpness","spin"];
+const TRAIT_WORDS = { energy:"high energy", verticality:"vertical/jumps", upperRatio:"arm-led",
+  expansive:"expansive", rhythm:"rhythmic groove", armElev:"arms high", sharpness:"sharp/staccato", spin:"turning" };
+const GENRES = [
+  { name:"Break",       p:[0.85,0.80,0.50,0.85,0.55,0.55,0.75,0.75] },
+  { name:"Pop",         p:[0.50,0.20,0.62,0.50,0.85,0.55,0.95,0.25] },
+  { name:"Lock",        p:[0.55,0.25,0.72,0.62,0.80,0.75,0.80,0.30] },
+  { name:"Hip-hop",     p:[0.55,0.45,0.50,0.50,0.85,0.50,0.55,0.30] },
+  { name:"House",       p:[0.80,0.45,0.35,0.55,0.95,0.35,0.55,0.50] },
+  { name:"Waack",       p:[0.75,0.20,0.88,0.80,0.80,0.92,0.85,0.50] },
+  { name:"Krump",       p:[0.95,0.45,0.60,0.90,0.55,0.75,0.95,0.45] },
+  { name:"Street Jazz", p:[0.65,0.50,0.55,0.85,0.55,0.75,0.55,0.75] },
+  { name:"Ballet Jazz", p:[0.55,0.65,0.50,0.95,0.35,0.80,0.30,0.80] },
+];
 
 function v(lm,i){ return [lm[i].x, lm[i].y, lm[i].z]; }
 function mid(a,b){ return [(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2]; }
 function lerp(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+function clamp01(x){ return Math.max(0,Math.min(1,x)); }
 
 function mp33to22(lm){
   const j = Array.from({length:22}, ()=>[0,0,0]);
@@ -129,217 +153,233 @@ function mp33to22(lm){
   j[H.left_ankle]=v(lm,MP.L_AN); j[H.right_ankle]=v(lm,MP.R_AN);
   j[H.left_foot]=v(lm,MP.L_FOOT); j[H.right_foot]=v(lm,MP.R_FOOT);
   j[H.spine1]=lerp(pelvis,neck,0.25); j[H.spine2]=lerp(pelvis,neck,0.5); j[H.spine3]=lerp(pelvis,neck,0.75);
-  j[H.neck]=neck;
-  j[H.left_shoulder]=lsh; j[H.right_shoulder]=rsh;
+  j[H.neck]=neck; j[H.left_shoulder]=lsh; j[H.right_shoulder]=rsh;
   j[H.left_elbow]=v(lm,MP.L_EL); j[H.right_elbow]=v(lm,MP.R_EL);
   j[H.left_wrist]=v(lm,MP.L_WR); j[H.right_wrist]=v(lm,MP.R_WR);
   j[H.left_collar]=lerp(neck,lsh,0.4); j[H.right_collar]=lerp(neck,rsh,0.4);
   const nose=v(lm,MP.NOSE); j[H.head]=lerp(neck,nose,1.3);
   return j;
 }
-function toYupHip(j22){
-  const p = j22[H.pelvis];
-  return j22.map(p2 => [p2[0]-p[0], -(p2[1]-p[1]), -(p2[2]-p[2])]);
+function toYupHip(j22){ const p=j22[H.pelvis]; return j22.map(q=>[q[0]-p[0], -(q[1]-p[1]), -(q[2]-p[2])]); }
+
+// ---------- feature extraction + classify ----------
+function extractFeatures(clip){
+  const T=clip.length, U=new Set([12,13,14,15,16,17,18,19,20,21]), L=new Set([1,2,4,5,7,8,10,11]);
+  let speed=0, vert=0, hor=0, up=0, low=0, jerk=0; const sig=[]; let prev=null;
+  for(let t=1;t<T;t++){
+    let fs=0; const vel=[];
+    for(let j=0;j<22;j++){
+      const dx=clip[t][j][0]-clip[t-1][j][0], dy=clip[t][j][1]-clip[t-1][j][1], dz=clip[t][j][2]-clip[t-1][j][2];
+      const d=Math.hypot(dx,dy,dz); fs+=d; vert+=Math.abs(dy); hor+=Math.abs(dx)+Math.abs(dz);
+      if(U.has(j)) up+=d; if(L.has(j)) low+=d; vel.push([dx,dy,dz]);
+    }
+    speed+=fs; sig.push(fs);
+    if(prev){ let jf=0; for(let j=0;j<22;j++) jf+=Math.hypot(vel[j][0]-prev[j][0],vel[j][1]-prev[j][1],vel[j][2]-prev[j][2]); jerk+=jf; }
+    prev=vel;
+  }
+  let armEl=0, exp=0; const az=[];
+  for(let t=0;t<T;t++){
+    armEl += ((clip[t][20][1]-clip[t][16][1])+(clip[t][21][1]-clip[t][17][1]))/2;
+    let e=0; for(let j=0;j<22;j++) e+=Math.hypot(clip[t][j][0],clip[t][j][1],clip[t][j][2]); exp+=e/22;
+    az.push(Math.atan2(clip[t][17][2]-clip[t][16][2], clip[t][17][0]-clip[t][16][0]));
+  }
+  let spin=0; for(let t=1;t<T;t++){ let d=az[t]-az[t-1]; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI; spin+=Math.abs(d); }
+  const nF=Math.max(1,T-1);
+  let rhythm=0; { const m=sig.reduce((a,b)=>a+b,0)/Math.max(1,sig.length);
+    const c=sig.map(x=>x-m); const den=c.reduce((a,b)=>a+b*b,0)||1;
+    for(let lag=3; lag<Math.min(sig.length/2,45); lag++){ let s=0; for(let i=0;i+lag<c.length;i++) s+=c[i]*c[i+lag]; rhythm=Math.max(rhythm,s/den); }
+    rhythm=clamp01(rhythm); }
+  return { energy:clamp01((speed/(nF*22))/0.03), verticality:clamp01(vert/(vert+hor||1)),
+    upperRatio:clamp01(up/(up+low||1)), expansive:clamp01((exp/T-0.30)/0.40), rhythm,
+    armElev:clamp01(((armEl/T)+0.40)/0.70), sharpness:clamp01((jerk/(nF*22))/0.02), spin:clamp01((spin/nF)/0.25) };
+}
+function classify(f){
+  const vec=FEATS.map(k=>f[k]);
+  const scored=GENRES.map(g=>{ let d=0; for(let i=0;i<vec.length;i++){ const e=vec[i]-g.p[i]; d+=e*e; } return { name:g.name, dist:Math.sqrt(d) }; });
+  const ex=scored.map(s=>Math.exp(-s.dist/0.35)); const Z=ex.reduce((a,b)=>a+b,0)||1;
+  scored.forEach((s,i)=>s.conf=ex[i]/Z); scored.sort((a,b)=>b.conf-a.conf); return scored;
+}
+function topTraits(f){ return FEATS.map(k=>[k,f[k]]).sort((a,b)=>b[1]-a[1]).slice(0,3).filter(([,x])=>x>0.45).map(([k])=>TRAIT_WORDS[k]); }
+
+// ---------- genre stylization (heuristic preview) ----------
+function meanPose(clip){ const T=clip.length, m=Array.from({length:22},()=>[0,0,0]);
+  for(const f of clip) for(let j=0;j<22;j++){ m[j][0]+=f[j][0]; m[j][1]+=f[j][1]; m[j][2]+=f[j][2]; }
+  for(let j=0;j<22;j++){ m[j][0]/=T; m[j][1]/=T; m[j][2]/=T; } return m; }
+function stylize(clip, p){
+  const T=clip.length, m=meanPose(clip);
+  const UP=new Set([12,13,14,15,16,17,18,19,20,21]), ARM=new Set([18,19,20,21]);
+  const [energy,vert,upper,exp,rhythm,armEl,sharp,spin]=p;
+  const amp=0.75+energy*0.6, sxz=0.7+exp*0.8, sy=0.8+vert*0.6, su=0.7+upper*0.9, sl=1.35-upper*0.8;
+  const cycles=1+Math.round(rhythm*4);
+  const out=[];
+  for(let t=0;t<T;t++){
+    const bounce=vert*0.10*Math.sin(2*Math.PI*cycles*t/Math.max(1,T));
+    const ang=spin*Math.PI*1.4*(t/Math.max(1,T)), ca=Math.cos(ang), sa=Math.sin(ang);
+    const fr=[];
+    for(let j=0;j<22;j++){
+      let dx=(clip[t][j][0]-m[j][0]), dy=(clip[t][j][1]-m[j][1]), dz=(clip[t][j][2]-m[j][2]);
+      const zone=UP.has(j)?su:sl; dx*=sxz*amp*zone; dy*=sy*amp*zone; dz*=sxz*amp*zone;
+      let x=m[j][0]+dx, y=m[j][1]+dy+bounce, z=m[j][2]+dz;
+      if(ARM.has(j)) y+=armEl*0.18;
+      fr.push([x*ca+z*sa, y, -x*sa+z*ca]);
+    }
+    out.push(fr);
+  }
+  return out;
 }
 
-// ---------- state / DOM ----------
+// ---------- DOM ----------
 const banner=document.getElementById("banner");
 function showBanner(msg,cls){ banner.textContent=msg; banner.className=cls; }
 const video=document.getElementById("video"), upvideo=document.getElementById("upvideo");
 const overlay=document.getElementById("overlay"), octx=overlay.getContext("2d");
-const rcv=document.getElementById("render"), rctx=rcv.getContext("2d");
 const recBtn=document.getElementById("recBtn"), stopBtn=document.getElementById("stopBtn");
 const playBtn=document.getElementById("playBtn"), loopBtn=document.getElementById("loopBtn");
 const spinBtn=document.getElementById("spinBtn"), dlBtn=document.getElementById("dlBtn");
 const scrub=document.getElementById("scrub"), durSel=document.getElementById("dur");
-const recMeta=document.getElementById("recMeta"), renderMeta=document.getElementById("renderMeta");
-const camdot=document.getElementById("camdot");
+const recMeta=document.getElementById("recMeta"), matched=document.getElementById("matched");
+const camdot=document.getElementById("camdot"), grid=document.getElementById("grid");
 const videoFile=document.getElementById("videoFile"), fileLabel=document.getElementById("fileLabel");
 
-let landmarker=null, camReady=false, recording=false, source="cam";
-let recFrames=[], recStart=0, recStopAt=0, fileURL=null;
-let clip=null, clipFps=30;
+// build tiles: Original + one per genre
+const TILES=[{name:"Original",orig:true}].concat(GENRES.map(g=>({name:g.name,p:g.p})));
+const tiles = TILES.map(t=>{
+  const cell=document.createElement("div"); cell.className="tile"+(t.orig?" orig":"");
+  const cv=document.createElement("canvas"); cv.width=260; cv.height=240;
+  const cap=document.createElement("div"); cap.className="tcap"; cap.textContent=t.name;
+  cell.appendChild(cv); cell.appendChild(cap); grid.appendChild(cell);
+  return { name:t.name, orig:!!t.orig, p:t.p, cell, ctx:cv.getContext("2d"), w:cv.width, h:cv.height, clip:null, fit:null };
+});
 
-// ---------- init camera (optional) + model (required) ----------
+let landmarker=null, camReady=false, recording=false, source="cam";
+let recFrames=[], recStart=0, recStopAt=0, fileURL=null, clip=null, clipFps=30;
+
+// ---------- init ----------
 async function init(){
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:640, height:480 }, audio:false });
-    video.srcObject = stream;
-    await new Promise(r => video.onloadedmetadata = r);
-    overlay.width = video.videoWidth; overlay.height = video.videoHeight;
-    camReady = true; camdot.className = "dot live";
-  } catch(e){
-    showBanner("Camera unavailable ("+e.message+") — you can still Upload a video below.","info");
-  }
+    video.srcObject = stream; await new Promise(r=>video.onloadedmetadata=r);
+    overlay.width=video.videoWidth; overlay.height=video.videoHeight; camReady=true; camdot.className="dot live";
+  } catch(e){ showBanner("Camera unavailable ("+e.message+") — you can still Upload a video below.","info"); }
   try {
-    const vision = await FilesetResolver.forVisionTasks(
-      "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
     landmarker = await PoseLandmarker.createFromOptions(vision, {
-      baseOptions:{ modelAssetPath:
-        "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
-        delegate:"GPU" },
+      baseOptions:{ modelAssetPath:"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task", delegate:"GPU" },
       runningMode:"VIDEO", numPoses:1 });
-  } catch(e){
-    showBanner("Pose model failed to load: "+e.message+" — check your network (CDN blocked?) and reload.","err");
-    recMeta.textContent = "Model load failed."; return;
-  }
-  if (camReady) recBtn.disabled = false;
-  videoFile.disabled = false; fileLabel.classList.remove("dis");
-  recMeta.textContent = camReady
-    ? "Ready. Stand back so your whole body is in frame — Record, or Upload a video."
-    : "Camera off — Upload a video to try it.";
+  } catch(e){ showBanner("Pose model failed to load: "+e.message+" — check network (CDN blocked?) and reload.","err"); recMeta.textContent="Model load failed."; return; }
+  if (camReady) recBtn.disabled=false;
+  videoFile.disabled=false; fileLabel.classList.remove("dis");
+  recMeta.textContent = camReady ? "Ready. Get your whole body in frame — Record, or Upload a video." : "Camera off — Upload a video to try it.";
   requestAnimationFrame(loop);
 }
 
-// ---------- unified live/processing loop ----------
-let lastT = -1;
+// ---------- capture loop (webcam + uploaded video) ----------
+let lastT=-1;
 function loop(){
-  const vid = source==="file" ? upvideo : video;
-  const ready = source==="file"
-    ? (upvideo.readyState>=2 && !upvideo.paused && !upvideo.ended)
-    : (camReady && video.readyState>=2);
-  if (landmarker && ready && vid.currentTime !== lastT){
-    lastT = vid.currentTime;
-    const res = landmarker.detectForVideo(vid, performance.now());   // performance.now() is monotonic for both sources
+  const vid = source==="file"?upvideo:video;
+  const ready = source==="file" ? (upvideo.readyState>=2 && !upvideo.paused && !upvideo.ended) : (camReady && video.readyState>=2);
+  if (landmarker && ready && vid.currentTime!==lastT){
+    lastT=vid.currentTime;
+    const res=landmarker.detectForVideo(vid, performance.now());
     octx.clearRect(0,0,overlay.width,overlay.height);
     if (res.landmarks && res.landmarks[0]){
       drawOverlay(mp33to22(res.landmarks[0]), source==="cam");
       if (recording && res.worldLandmarks && res.worldLandmarks[0]){
         recFrames.push(toYupHip(mp33to22(res.worldLandmarks[0])));
-        if (source==="cam"){
-          const t=(performance.now()-recStart)/1000;
-          recMeta.innerHTML = `<span class="dot rec"></span>Recording… ${t.toFixed(1)}s · ${recFrames.length} frames`;
-          if (performance.now() >= recStopAt) stopRecording();
-        } else {
-          const pct = upvideo.duration ? Math.min(100, 100*upvideo.currentTime/upvideo.duration)|0 : 0;
-          recMeta.innerHTML = `<span class="dot rec"></span>Processing video… ${pct}% · ${recFrames.length} frames`;
-          if (recFrames.length >= MAX_FRAMES) finishUpload();
+        if (source==="cam"){ const t=(performance.now()-recStart)/1000;
+          recMeta.innerHTML=`<span class="dot rec"></span>Recording… ${t.toFixed(1)}s · ${recFrames.length} frames`;
+          if (performance.now()>=recStopAt) stopRecording();
+        } else { const pct=upvideo.duration?Math.min(100,100*upvideo.currentTime/upvideo.duration)|0:0;
+          recMeta.innerHTML=`<span class="dot rec"></span>Processing video… ${pct}% · ${recFrames.length} frames`;
+          if (recFrames.length>=MAX_FRAMES) finishUpload();
         }
       }
-    } else if (recording){
-      recMeta.innerHTML = `<span class="dot rec"></span>${source==="file"?"Processing…":"Recording…"} (no body detected)`;
-    }
+    } else if (recording){ recMeta.innerHTML=`<span class="dot rec"></span>${source==="file"?"Processing…":"Recording…"} (no body detected)`; }
   }
   requestAnimationFrame(loop);
 }
-
 function drawOverlay(j22, mirror){
-  const w=overlay.width, h=overlay.height;
-  const X = x => (mirror ? (1-x) : x) * w;
-  octx.lineWidth = 3; octx.strokeStyle = "#6ad07f";
-  for (const [a,b] of BONES){
-    octx.beginPath(); octx.moveTo(X(j22[a][0]), j22[a][1]*h); octx.lineTo(X(j22[b][0]), j22[b][1]*h); octx.stroke();
-  }
-  octx.fillStyle = "#ffd24d";
-  for (const p of j22){ octx.beginPath(); octx.arc(X(p[0]), p[1]*h, 3.5, 0, 7); octx.fill(); }
+  const w=overlay.width, h=overlay.height, X=x=>(mirror?(1-x):x)*w;
+  octx.lineWidth=3; octx.strokeStyle="#6ad07f";
+  for (const [a,b] of BONES){ octx.beginPath(); octx.moveTo(X(j22[a][0]),j22[a][1]*h); octx.lineTo(X(j22[b][0]),j22[b][1]*h); octx.stroke(); }
+  octx.fillStyle="#ffd24d";
+  for (const p of j22){ octx.beginPath(); octx.arc(X(p[0]),p[1]*h,3.5,0,7); octx.fill(); }
 }
 
-// ---------- record (webcam) ----------
-recBtn.onclick = () => {
-  source="cam"; recFrames=[]; recording=true;
-  recStart=performance.now(); recStopAt=recStart + parseFloat(durSel.value)*1000;
-  recBtn.disabled=true; stopBtn.disabled=false; durSel.disabled=true; videoFile.disabled=true; fileLabel.classList.add("dis");
-};
-stopBtn.onclick = () => { source==="file" ? finishUpload() : stopRecording(); };
-
-function stopRecording(){
-  if (!recording) return;
-  recording=false; recBtn.disabled=false; stopBtn.disabled=true; durSel.disabled=false;
-  videoFile.disabled=false; fileLabel.classList.remove("dis");
-  const secs=(performance.now()-recStart)/1000;
-  finalizeClip(Math.max(1, Math.round(recFrames.length/secs)));
-}
-
-// ---------- upload (video file) ----------
-videoFile.onchange = async (e) => {
-  const f = e.target.files[0]; if (!f) return;
-  if (!landmarker){ showBanner("Pose model isn't ready yet — wait a moment and retry.","err"); return; }
-  if (fileURL) URL.revokeObjectURL(fileURL);
-  fileURL = URL.createObjectURL(f);
-  upvideo.src = fileURL; upvideo.currentTime = 0;
-  video.style.display="none"; upvideo.style.display="block";
-  await upvideo.play().catch(()=>{});
-  overlay.width = upvideo.videoWidth || 640; overlay.height = upvideo.videoHeight || 480;
+// ---------- record / upload ----------
+recBtn.onclick=()=>{ source="cam"; recFrames=[]; recording=true; recStart=performance.now(); recStopAt=recStart+parseFloat(durSel.value)*1000;
+  recBtn.disabled=true; stopBtn.disabled=false; durSel.disabled=true; videoFile.disabled=true; fileLabel.classList.add("dis"); };
+stopBtn.onclick=()=>{ source==="file"?finishUpload():stopRecording(); };
+function stopRecording(){ if(!recording) return; recording=false; recBtn.disabled=false; stopBtn.disabled=true; durSel.disabled=false;
+  videoFile.disabled=false; fileLabel.classList.remove("dis"); finalizeClip(Math.max(1,Math.round(recFrames.length/((performance.now()-recStart)/1000)))); }
+videoFile.onchange=async(e)=>{ const f=e.target.files[0]; if(!f) return;
+  if(!landmarker){ showBanner("Pose model isn't ready yet — wait a moment and retry.","err"); return; }
+  if(fileURL) URL.revokeObjectURL(fileURL); fileURL=URL.createObjectURL(f);
+  upvideo.src=fileURL; upvideo.currentTime=0; video.style.display="none"; upvideo.style.display="block";
+  await upvideo.play().catch(()=>{}); overlay.width=upvideo.videoWidth||640; overlay.height=upvideo.videoHeight||480;
   source="file"; recFrames=[]; recording=true; recStart=performance.now();
-  recBtn.disabled=true; stopBtn.disabled=false; durSel.disabled=true;
-  recMeta.innerHTML = `<span class="dot rec"></span>Processing video…`;
-  upvideo.onended = finishUpload;
-};
-function finishUpload(){
-  if (source!=="file") return;
-  recording=false; upvideo.onended=null; upvideo.pause();
-  const dur = upvideo.duration || ((performance.now()-recStart)/1000);
-  video.style.display="block"; upvideo.style.display="none";
-  overlay.width = video.videoWidth || 640; overlay.height = video.videoHeight || 480;
-  source="cam"; recBtn.disabled = !camReady; stopBtn.disabled=true; durSel.disabled=false;
-  videoFile.disabled=false; fileLabel.classList.remove("dis"); videoFile.value="";
-  if (recFrames.length < 2){ recMeta.textContent = "No pose found in that video — try one with a full body visible."; return; }
-  finalizeClip(Math.max(1, Math.round(recFrames.length / Math.max(0.1,dur))), recFrames.length>=MAX_FRAMES);
-}
+  recBtn.disabled=true; stopBtn.disabled=false; durSel.disabled=true; recMeta.innerHTML=`<span class="dot rec"></span>Processing video…`;
+  upvideo.onended=finishUpload; };
+function finishUpload(){ if(source!=="file") return; recording=false; upvideo.onended=null; upvideo.pause();
+  const dur=upvideo.duration||((performance.now()-recStart)/1000);
+  video.style.display="block"; upvideo.style.display="none"; overlay.width=video.videoWidth||640; overlay.height=video.videoHeight||480;
+  source="cam"; recBtn.disabled=!camReady; stopBtn.disabled=true; durSel.disabled=false; videoFile.disabled=false; fileLabel.classList.remove("dis"); videoFile.value="";
+  if(recFrames.length<2){ recMeta.textContent="No pose found in that video — try one with a full body visible."; return; }
+  finalizeClip(Math.max(1,Math.round(recFrames.length/Math.max(0.1,dur))), recFrames.length>=MAX_FRAMES); }
 
-// ---------- finalize + hand to render ----------
+// ---------- finalize: build original + genre tiles, classify ----------
 function finalizeClip(fps, truncated){
-  clipFps = fps; clip = recFrames.slice();
-  recMeta.textContent = `Captured ${clip.length} frames (~${clipFps} fps)`
-    + (truncated?` — capped at ${MAX_FRAMES}`:"") + ". Rendered on the right →";
-  setupPlayback();
-}
-
-// ---------- render / playback ----------
-let fit=null, playing=false, spin=false, loopOn=true, frameIdx=0, spinAng=0, lastFrameT=0;
-function computeFit(frames){
-  let mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9;
-  for (const f of frames) for (const p of f){
-    mnx=Math.min(mnx,p[0]); mxx=Math.max(mxx,p[0]); mny=Math.min(mny,p[1]); mxy=Math.max(mxy,p[1]);
-  }
-  const spanX=Math.max(1e-3,mxx-mnx), spanY=Math.max(1e-3,mxy-mny);
-  const w=rcv.width, h=rcv.height, scale=0.8*Math.min(w/spanX, h/spanY);
-  return { scale, cx:w/2-(mnx+mxx)/2*scale, cy:h/2+(mny+mxy)/2*scale };
-}
-function setupPlayback(){
-  fit=computeFit(clip);
+  clipFps=fps; clip=recFrames.slice();
+  recMeta.textContent=`Captured ${clip.length} frames (~${clipFps} fps)`+(truncated?` — capped at ${MAX_FRAMES}`:"")+".";
+  for(const to of tiles){ to.clip = to.orig ? clip : stylize(clip, to.p); to.fit=computeFit(to.clip,to.w,to.h); to.cell.classList.remove("match"); }
+  const f=extractFeatures(clip), ranked=classify(f), best=ranked[0];
+  const tr=topTraits(f);
+  const cell=tiles.find(t=>t.name===best.name); if(cell) cell.cell.classList.add("match");
+  matched.innerHTML=`Matched to your motion: <b>${best.name}</b> (${Math.round(best.conf*100)}%)`
+    + (tr.length?` · traits: ${tr.join(" · ")}`:"");
   scrub.max=clip.length-1; scrub.value=0; scrub.disabled=false;
   playBtn.disabled=false; loopBtn.disabled=false; spinBtn.disabled=false; dlBtn.disabled=false;
-  frameIdx=0; playing=true; lastFrameT=performance.now();
-  renderMeta.textContent = `${clip.length} frames · ${clipFps} fps`;
+  frameIdx=0; playing=true; lastFrameT=performance.now(); playBtn.textContent="⏸ Pause";
   requestAnimationFrame(playLoop);
 }
-function drawFrame(j22){
-  rctx.fillStyle="#0b0b10"; rctx.fillRect(0,0,rcv.width,rcv.height);
+
+// ---------- render tiles ----------
+function computeFit(frames,w,h){
+  let mnx=1e9,mxx=-1e9,mny=1e9,mxy=-1e9;
+  for(const f of frames) for(const p of f){ mnx=Math.min(mnx,p[0]);mxx=Math.max(mxx,p[0]);mny=Math.min(mny,p[1]);mxy=Math.max(mxy,p[1]); }
+  const spanX=Math.max(1e-3,mxx-mnx), spanY=Math.max(1e-3,mxy-mny), scale=0.8*Math.min(w/spanX,h/spanY);
+  return { scale, cx:w/2-(mnx+mxx)/2*scale, cy:h/2+(mny+mxy)/2*scale };
+}
+let playing=false, spin=false, loopOn=true, frameIdx=0, spinAng=0, lastFrameT=0;
+function drawTile(to, frame){
+  const ctx=to.ctx, w=to.w, h=to.h, fit=to.fit, j22=to.clip[frame];
+  ctx.fillStyle="#0b0b10"; ctx.fillRect(0,0,w,h);
   const ca=Math.cos(spinAng), sa=Math.sin(spinAng);
-  const proj = p => [ fit.cx + (p[0]*ca+p[2]*sa)*fit.scale, fit.cy - p[1]*fit.scale, p[0]*(-sa)+p[2]*ca ];
-  const P = j22.map(proj);
-  rctx.lineWidth=4; rctx.lineCap="round";
-  for (const [a,b] of BONES){
-    const zavg=(P[a][2]+P[b][2])/2, t=Math.max(0,Math.min(1,(zavg+0.5)));
-    rctx.strokeStyle=`rgba(${90+80*t|0},${170+40*t|0},${120+60*t|0},${0.55+0.45*t})`;
-    rctx.beginPath(); rctx.moveTo(P[a][0],P[a][1]); rctx.lineTo(P[b][0],P[b][1]); rctx.stroke();
-  }
-  rctx.fillStyle="#ffd24d";
-  for (const p of P){ rctx.beginPath(); rctx.arc(p[0],p[1],4,0,7); rctx.fill(); }
+  const P=j22.map(p=>[ fit.cx+(p[0]*ca+p[2]*sa)*fit.scale, fit.cy-p[1]*fit.scale, p[0]*(-sa)+p[2]*ca ]);
+  ctx.lineWidth=3; ctx.lineCap="round";
+  const col = to.orig ? [95,169,216] : [106,208,127];
+  for(const [a,b] of BONES){ const zt=Math.max(0,Math.min(1,((P[a][2]+P[b][2])/2+0.5)));
+    ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${0.5+0.5*zt})`;
+    ctx.beginPath(); ctx.moveTo(P[a][0],P[a][1]); ctx.lineTo(P[b][0],P[b][1]); ctx.stroke(); }
+  ctx.fillStyle="#ffd24d";
+  for(const p of P){ ctx.beginPath(); ctx.arc(p[0],p[1],2.6,0,7); ctx.fill(); }
 }
 function playLoop(){
-  if (!clip) return;
+  if(!clip) return;
   const now=performance.now();
-  if (playing && now-lastFrameT >= 1000/clipFps){
-    lastFrameT=now; frameIdx++;
-    if (frameIdx>=clip.length){ if (loopOn) frameIdx=0; else { frameIdx=clip.length-1; playing=false; playBtn.textContent="▶ Play"; } }
-    scrub.value=frameIdx;
-  }
-  if (spin) spinAng += 0.03;
-  drawFrame(clip[frameIdx]);
+  if(playing && now-lastFrameT>=1000/clipFps){ lastFrameT=now; frameIdx++;
+    if(frameIdx>=clip.length){ if(loopOn) frameIdx=0; else { frameIdx=clip.length-1; playing=false; playBtn.textContent="▶ Play"; } }
+    scrub.value=frameIdx; }
+  if(spin) spinAng+=0.03;
+  for(const to of tiles){ if(to.clip) drawTile(to, frameIdx); }
   requestAnimationFrame(playLoop);
 }
-playBtn.onclick = () => { playing=!playing; playBtn.textContent = playing?"⏸ Pause":"▶ Play"; lastFrameT=performance.now(); };
-loopBtn.onclick = () => { loopOn=!loopOn; loopBtn.textContent = "Loop: "+(loopOn?"on":"off"); };
-spinBtn.onclick = () => { spin=!spin; spinBtn.textContent = "Spin: "+(spin?"on":"off"); };
-scrub.oninput = () => { frameIdx=+scrub.value; playing=false; playBtn.textContent="▶ Play"; };
-dlBtn.onclick = () => {
-  const blob = new Blob([JSON.stringify({ format:"HumanML3D-22", axes:"y-up, hip-centered",
-    fps:clipFps, frames:clip.length, joints:clip })], { type:"application/json" });
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-  a.download="visitor_clip.json"; a.click(); URL.revokeObjectURL(a.href);
-};
+playBtn.onclick=()=>{ playing=!playing; playBtn.textContent=playing?"⏸ Pause":"▶ Play"; lastFrameT=performance.now(); };
+loopBtn.onclick=()=>{ loopOn=!loopOn; loopBtn.textContent="Loop: "+(loopOn?"on":"off"); };
+spinBtn.onclick=()=>{ spin=!spin; spinBtn.textContent="Spin: "+(spin?"on":"off"); };
+scrub.oninput=()=>{ frameIdx=+scrub.value; playing=false; playBtn.textContent="▶ Play"; };
+dlBtn.onclick=()=>{ const blob=new Blob([JSON.stringify({ format:"HumanML3D-22", axes:"y-up, hip-centered", fps:clipFps, frames:clip.length, joints:clip })],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="visitor_clip.json"; a.click(); URL.revokeObjectURL(a.href); };
 
 init();
 </script>
