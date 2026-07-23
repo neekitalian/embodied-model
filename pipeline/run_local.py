@@ -71,6 +71,9 @@ def main():
     ap.add_argument("--host", default="127.0.0.1"); ap.add_argument("--port", type=int, default=39539)
     ap.add_argument("--fps", type=float, default=30.0); ap.add_argument("--loop", action="store_true")
     a = ap.parse_args()
+    a.visitor = os.path.expanduser(a.visitor)
+    a.reference = os.path.expanduser(a.reference) if a.reference else a.reference
+    a.refs_dir, a.out = os.path.expanduser(a.refs_dir), os.path.expanduser(a.out)
 
     ref = resolve_reference(a.reference, a.genre, a.refs_dir)
     visitor, reference, styled = run(a.visitor, ref, a.alpha)

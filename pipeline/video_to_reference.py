@@ -60,9 +60,15 @@ def main():
     ap.add_argument("--out-fps", type=int, default=30)
     ap.add_argument("--seconds", type=float, default=6.0, help="trim to a representative phrase")
     a = ap.parse_args()
+    a.glob = os.path.expanduser(a.glob) if a.glob else a.glob      # so "~/Downloads/..." works
+    a.video = os.path.expanduser(a.video) if a.video else a.video
+    a.out, a.out_dir = os.path.expanduser(a.out), os.path.expanduser(a.out_dir)
     if a.glob:
         os.makedirs(a.out_dir, exist_ok=True)
-        for v in sorted(glob.glob(a.glob)):
+        hits = sorted(glob.glob(a.glob, recursive=True))
+        if not hits:
+            raise SystemExit(f"no videos match {a.glob} — run: ls the folder to check the path/prefix")
+        for v in hits:
             out = os.path.join(a.out_dir, os.path.splitext(os.path.basename(v))[0] + ".json")
             try: process(v, out, a.out_fps, a.seconds)
             except Exception as e: print(f"  skip {os.path.basename(v)}: {e}")
