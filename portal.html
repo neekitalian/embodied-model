@@ -423,14 +423,17 @@ function rebuildTiles(){
   for(const to of tiles){
     if(to.orig){ to.clip=clip; continue; }
     const ref=refs[to.name];
-    if(ref){ to.clip=transfer(clip, ref, styleAlpha); real++; }
-    else { to.clip=edition(clip, to.g, clipFps); }
+    // Visible genre CHARACTER (posture/silhouette/beat, from edition) layered on the reference-informed
+    // transfer (subtle, real). Together: clearly distinct genres, grounded in your AIST data.
+    const base = ref ? transfer(clip, ref, styleAlpha) : clip;
+    to.clip = edition(base, to.g, clipFps);
+    if(ref) real++;
   }
   const sharedFit=computeFit(tiles.flatMap(to=>to.clip), tiles[0].w, tiles[0].h);  // one framing so differences show
   for(const to of tiles) to.fit=sharedFit;
   note.innerHTML = real
-    ? `Original + genre transfer against AIST references · <b>α=${styleAlpha.toFixed(2)}</b> (0 = you, 1 = full genre). Identity protected; raising α strengthens the genre.`
-    : `Original + heuristic genre editions. Real transfer activates once <code>pipeline/refs/{jazz,ballet,hip-hop}.json</code> are pushed to the repo.`;
+    ? `Original + genre editions, informed by your AIST references (<b>α=${styleAlpha.toFixed(2)}</b> underlay). Identity protected; genres differ in posture, spread and beat.`
+    : `Original + heuristic genre editions. AIST-referenced underlay activates once <code>pipeline/refs/{jazz,ballet,hip-hop}.json</code> load.`;
 }
 
 // ---------- render tiles ----------
@@ -442,7 +445,7 @@ function computeFit(frames,w,h){
 }
 let playing=false, spin=false, loopOn=true, frameIdx=0, spinAng=0, lastFrameT=0;
 function drawTile(to, frame){
-  const ctx=to.ctx, w=to.w, h=to.h, fit=to.fit, j22=to.clip[frame];
+  const ctx=to.ctx, w=to.w, h=to.h, fit=to.fit, j22=to.clip[Math.min(frame, to.clip.length-1)];
   ctx.fillStyle="#0b0b10"; ctx.fillRect(0,0,w,h);
   const ca=Math.cos(spinAng), sa=Math.sin(spinAng);
   const P=j22.map(p=>[ fit.cx+(p[0]*ca+p[2]*sa)*fit.scale, fit.cy-p[1]*fit.scale, p[0]*(-sa)+p[2]*ca ]);
