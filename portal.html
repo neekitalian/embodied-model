@@ -190,10 +190,11 @@ function footPhase(clip){
   return ph;
 }
 function rhythmAlign(vis, ref){
-  const T=vis.length, vph=footPhase(vis), rph=footPhase(ref), xp0=vph[0], xp1=vph[T-1];
+  const T=vis.length, vph=footPhase(vis), rph=footPhase(ref);
+  const xp0=vph[0], xp1=vph[T-1], r0=rph[0], r1=rph[rph.length-1];   // use ref's OWN last index (may differ in length)
   if(!(xp1>xp0)) return vis.map(f=>f.map(p=>p.slice()));    // degenerate phase -> no warp
   const out=[];
-  for(let k=0;k<T;k++){ const xk=rph[0]+(rph[T-1]-rph[0])*k/(T-1);
+  for(let k=0;k<T;k++){ const xk=r0+(r1-r0)*k/(T-1);
     let frac=(xk-xp0)/(xp1-xp0); frac=Math.max(0,Math.min(1,frac));
     out.push(vis[Math.round(frac*(T-1))]); }
   return out;
@@ -215,8 +216,8 @@ function oneEuro(clip, a){
   return out;
 }
 function transfer(visitor, reference, alpha){   // uniform alpha across zones (matches run_local --alpha)
-  const T=Math.min(visitor.length, reference.length);
-  const vis=visitor.slice(0,T), ref=reference.slice(0,T), st=alpha;
+  const T=visitor.length;                        // keep the FULL capture length (reference only supplies style stats)
+  const vis=visitor, ref=reference, st=alpha;
   const al=rhythmAlign(vis, ref);
   let out=vis.map((f,t)=>f.map((p,j)=>[ st*al[t][j][0]+(1-st)*p[0], st*al[t][j][1]+(1-st)*p[1], st*al[t][j][2]+(1-st)*p[2] ]));
   for(const z in ZONES){ const js=ZONES[z], vf=zoneFeat(vis,js), rf=zoneFeat(ref,js);
