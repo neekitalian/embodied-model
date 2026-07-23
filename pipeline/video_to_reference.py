@@ -45,6 +45,7 @@ def process(video_path, out, out_fps=30, seconds=None):
     if len(frames) < 2:
         raise RuntimeError(f"{video_path}: no full-body pose detected")
     seq = to_yup_hipcentered(np.stack(frames)).astype(np.float32)
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     json.dump({"format": "HumanML3D-22", "axes": "y-up, hip-centered",
                "fps": out_fps, "frames": len(seq), "joints": seq.tolist()}, open(out, "w"))
     print(f"[video->ref] {os.path.basename(video_path)} -> {seq.shape} -> {out}")

@@ -24,9 +24,10 @@ def resolve_reference(reference, genre, refs_dir):
         return reference
     if not genre:
         raise SystemExit("give --reference PATH or --genre NAME (+ --refs-dir)")
-    # match refs/<genre>*.json, or an AIST code (jazz->gJS, ballet->gJB, hip-hop->gLH/gMH)
-    codes = {"jazz": "gJS", "ballet": "gJB", "hip-hop": "gLH", "hiphop": "gLH", "house": "gHO"}
-    pats = [f"*{genre}*.json", f"{codes.get(genre.lower(),'')}*.json"]
+    # match refs/<genre>*.json, or an AIST code (hip-hop covers Middle gMH + LA gLH)
+    codes = {"jazz":["gJS"], "ballet":["gJB"], "hip-hop":["gMH","gLH"], "hiphop":["gMH","gLH"],
+             "house":["gHO"], "break":["gBR"], "krump":["gKR"], "pop":["gPO"], "lock":["gLO"], "waack":["gWA"]}
+    pats = [f"*{genre.lower()}*.json"] + [f"{c}*.json" for c in codes.get(genre.lower(), [])]
     for p in pats:
         hits = sorted(glob.glob(os.path.join(refs_dir, p)))
         if hits:
