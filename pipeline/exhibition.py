@@ -105,6 +105,8 @@ def main():
     ap.add_argument("--alpha", type=float, default=0.45, help="identity<->genre floor (0..1)")
     ap.add_argument("--model", help="trained proto encoder checkpoint (.pt from train_proto.py); "
                                     "uses the LEARNED embedding for compare/allocate (needs torch)")
+    ap.add_argument("--protos-dir", help="labeled clips folder (data/<genre>/*) to build each genre's "
+                                         "prototype from ALL its clips instead of the single reference")
     ap.add_argument("--out", default="edited.npy", help="edited clip output (.npy)")
     a = ap.parse_args()
     a.visitor, a.refs_dir, a.out = map(os.path.expanduser, (a.visitor, a.refs_dir, a.out))
@@ -117,8 +119,16 @@ def main():
     models = None
     if a.model:
         from proto_infer import build_learned_models
-        models = build_learned_models(refs, os.path.expanduser(a.model))
-        print(f"[unnoticed_dance] using LEARNED prototypical encoder: {a.model}")
+        proto_clips = None
+        if a.protos_dir:
+            pd = os.path.expanduser(a.protos_dir)
+            proto_clips = {os.path.basename(d): [gs.load_clip(p) for p in
+                           sorted(glob.glob(os.path.join(d, "*.json")) + glob.glob(os.path.join(d, "*.npy")))]
+                           for d in sorted(glob.glob(os.path.join(pd, "*"))) if os.path.isdir(d)}
+            proto_clips = {g: c for g, c in proto_clips.items() if c}
+        models = build_learned_models(refs, os.path.expanduser(a.model), proto_clips=proto_clips)
+        print(f"[unnoticed_dance] using LEARNED prototypical encoder: {a.model}"
+              + (f" (prototypes from {a.protos_dir})" if proto_clips else ""))
 
     edited, rep = unnoticed_dance(visitor, refs, base_alpha=a.alpha, models=models)
     np.save(a.out, edited.astype(np.float32))

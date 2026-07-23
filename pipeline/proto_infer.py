@@ -87,8 +87,13 @@ class LearnedGenreModel:
         return out, mean
 
 
-def build_learned_models(references, ckpt="proto_encoder.pt", win=WIN, stride=STRIDE):
-    """Load the trained encoder, build prototypes from `references`, return {genre: LearnedGenreModel}."""
+def build_learned_models(references, ckpt="proto_encoder.pt", win=WIN, stride=STRIDE, proto_clips=None):
+    """Load the trained encoder, build prototypes, return {genre: LearnedGenreModel}.
+
+    references : {genre: clip} -- the EDIT target per genre (style source for transfer).
+    proto_clips: optional {genre: [clips]} -- when given, each genre's prototype is the mean embedding
+                 over ALL these clips (e.g. the data/<genre>/ training set) instead of the single
+                 reference, which stabilizes allocation across dancers."""
     import torch                                                             # lazy: only when opting in
     from proto_model import STGCNEncoder
     blob = torch.load(ckpt, map_location="cpu")
@@ -98,10 +103,10 @@ def build_learned_models(references, ckpt="proto_encoder.pt", win=WIN, stride=ST
 
     genres = [g for g in blob["genres"] if g in references] or list(references)
     ctx = _Ctx(enc, genres, None, win, stride, tau, torch)
-    # prototype per genre = mean embedding of that genre's reference windows
     protos = []
     for g in genres:
-        _, z = ctx.embed_windows(np.asarray(references[g], dtype=np.float32))
-        protos.append(torch.nn.functional.normalize(z.mean(0, keepdim=True), dim=-1))
+        clips = (proto_clips or {}).get(g) or [references[g]]
+        zs = [ctx.embed_windows(np.asarray(c, dtype=np.float32))[1] for c in clips]
+        protos.append(torch.nn.functional.normalize(torch.cat(zs, 0).mean(0, keepdim=True), dim=-1))
     ctx.protos = torch.cat(protos, 0)                                       # (K, D)
     return {g: LearnedGenreModel(g, references[g], ctx) for g in genres}
