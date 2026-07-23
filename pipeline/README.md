@@ -12,6 +12,9 @@ end-to-end run happens locally (needs a webcam, your `semantic_spectrum`, and AI
 | `stage7_vmc_sender.py` | 7 · joints → VMC → Unity | built, OSC loopback ok |
 | `run_mvp.py` | end-to-end orchestrator (calls your `semantic_spectrum`) | scaffold, 3 ADAPT points |
 | `genre_style.py` | identity-preserving per-zone genre style transfer (rhythm-align + zone-α) | proxy runs, `test_genre_style.py` 7/7; 2 ADAPT points for the real encoder |
+| `video_to_reference.py` | dance video (AIST DB) -> HumanML3D-22 reference JSON (MediaPipe) | reuses stage12 |
+| `aist_to_reference.py` | AIST++ SMPL motion -> HumanML3D-22 reference JSON | scaffold, 1 ADAPT (SMPL forward) |
+
 | `UNITY_SETUP.md` | Stage 3 / afternoon Unity receiver setup | notes |
 
 ## Install
@@ -32,6 +35,19 @@ python hml_skeleton.py   # FK round-trip
 python test_lift.py      # capture+lift logic
 python test_tools.py     # viewer render + VMC OSC loopback
 ```
+
+
+## Make genre reference clips (for genre_style.py)
+AIST DB gives **videos** (non-commercial → gallery/research track only). Turn them into references:
+```
+# from a dance video (Jazz=gJS, Ballet=gJB, Hip-hop=gLH/gMH):
+python video_to_reference.py --video gJB_sBM_c01_d05_mJB0_ch01.mp4 --out ballet_ref.json --seconds 6
+# or batch a folder:
+python video_to_reference.py --glob "~/Downloads/aist/gLH_*.mp4" --out-dir refs/
+# then transfer the visitor's identity into that genre:
+python genre_style.py --visitor visitor_clip.json --reference ballet_ref.json --alpha 0.5 --out styled.npy
+```
+(Or just upload a genre video in the /portal page and download its JSON — same result, no code.)
 
 ## Data contract
 `(T, 22, 3)` float32 · HumanML3D 22-joint order · y-up · pelvis(0) carries global position.
