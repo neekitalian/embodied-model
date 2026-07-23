@@ -73,7 +73,7 @@
     <div class="row">
       <button class="rec" id="recBtn" disabled>● Record</button>
       <label style="font-size:13px;color:var(--dim)">for
-        <select id="dur"><option value="4">4s</option><option value="6" selected>6s</option><option value="8">8s</option><option value="10">10s</option></select>
+        <select id="dur"><option value="4">4s</option><option value="6">6s</option><option value="10">10s</option><option value="30" selected>30s</option><option value="45">45s</option><option value="60">60s</option></select>
       </label>
       <button id="stopBtn" disabled>Stop</button>
     </div>
@@ -125,7 +125,7 @@ const H = { pelvis:0,left_hip:1,right_hip:2,spine1:3,left_knee:4,right_knee:5,sp
   left_wrist:20,right_wrist:21 };
 const PARENTS = [-1,0,0,0,1,2,3,4,5,6,7,8,9,9,9,12,13,14,16,17,18,19];
 const BONES = []; for (let j=1;j<22;j++) BONES.push([PARENTS[j], j]);
-const MAX_FRAMES = 900;
+const MAX_FRAMES = 1800;   // 60s @ 30fps - matches the longest recording option
 
 // Only 3 editions. First principle = protect identity: keep the trajectory, vary SCALE (amplitude
 // about the mean pose) and FREQUENCY (a gentle time-modulation + bounce) only, all subtle.
