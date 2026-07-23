@@ -11,6 +11,7 @@ end-to-end run happens locally (needs a webcam, your `semantic_spectrum`, and AI
 | `view_clip.py` | 3D stick-figure viewer for any `(T,22,3)` clip | built |
 | `stage7_vmc_sender.py` | 7 · joints → VMC → Unity | built, OSC loopback ok |
 | `run_mvp.py` | end-to-end orchestrator (calls your `semantic_spectrum`) | scaffold, 3 ADAPT points |
+| `genre_style.py` | identity-preserving per-zone genre style transfer (rhythm-align + zone-α) | proxy runs, `test_genre_style.py` 7/7; 2 ADAPT points for the real encoder |
 | `UNITY_SETUP.md` | Stage 3 / afternoon Unity receiver setup | notes |
 
 ## Install
