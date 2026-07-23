@@ -92,10 +92,17 @@ def prototypes(embeddings, labels, num_classes):
     return F.normalize(protos, dim=-1)
 
 
+def sqdist(query, protos):
+    """Pairwise squared euclidean distance via matmul (torch.cdist lacks an MPS backward; this is
+    differentiable on every device). query (Q,D), protos (K,D) -> (Q,K)."""
+    q2 = (query * query).sum(-1, keepdim=True)              # (Q,1)
+    p2 = (protos * protos).sum(-1)                          # (K,)
+    return (q2 - 2.0 * query @ protos.T + p2).clamp_min(0.0)
+
+
 def proto_logits(query, protos, tau=1.0):
     """Negative squared-distance logits of queries to prototypes. query (Q,D), protos (K,D) -> (Q,K)."""
-    d2 = torch.cdist(query, protos) ** 2
-    return -d2 / tau
+    return -sqdist(query, protos) / tau
 
 
 def proto_loss(query, q_labels, protos, tau=1.0):

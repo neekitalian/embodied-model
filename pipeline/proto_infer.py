@@ -48,9 +48,9 @@ class _Ctx:
     def genre_prob_curves(self, clip):
         """Per-genre probability curve over the clip: softmax over prototype distance, interpolated + smoothed."""
         torch = self.torch
+        from proto_model import proto_logits
         centers, z = self.embed_windows(clip)
-        d2 = torch.cdist(z, self.protos) ** 2                                # (M, K)
-        probs = torch.softmax(-d2 / self.tau, dim=1).cpu().numpy()           # (M, K)
+        probs = torch.softmax(proto_logits(z, self.protos, self.tau), dim=1).cpu().numpy()   # (M, K)
         T = len(clip); curves = {}
         for ki, g in enumerate(self.genres):
             vals = probs[:, ki]
