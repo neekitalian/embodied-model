@@ -11,14 +11,14 @@
   body { background:var(--bg); color:var(--ink); font-family:-apple-system,"Segoe UI",sans-serif;
     min-height:100vh; padding:20px; }
   a { color:var(--blue); text-decoration:none; } a:hover{ text-decoration:underline; }
-  header { max-width:1200px; margin:0 auto 14px; }
+  header { max-width:1150px; margin:0 auto 14px; }
   h1 { font-size:20px; } .sub { color:var(--dim); font-size:13px; margin-top:3px; }
 
-  #banner { max-width:1200px; margin:0 auto 14px; padding:11px 15px; border-radius:10px; font-size:13px; display:none; }
+  #banner { max-width:1150px; margin:0 auto 14px; padding:11px 15px; border-radius:10px; font-size:13px; display:none; }
   #banner.err { display:block; background:#2a1618; border:1px solid #5a2f2f; color:#f0b8b8; }
   #banner.info { display:block; background:#161d22; border:1px solid #24404e; color:#a9d4e6; }
 
-  .cols { max-width:1200px; margin:0 auto; display:grid; grid-template-columns:360px 1fr; gap:16px; align-items:start; }
+  .cols { max-width:1150px; margin:0 auto; display:grid; grid-template-columns:360px 1fr; gap:16px; align-items:start; }
   @media (max-width:860px){ .cols{ grid-template-columns:1fr; } }
   .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
   .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin-bottom:12px; }
@@ -43,21 +43,20 @@
   .dot.live { background:var(--green); } .dot.rec { background:var(--red); animation:pulse 1s infinite; }
   @keyframes pulse { 50%{ opacity:.3; } }
 
-  #matched { font-size:13px; color:var(--ink); margin-top:6px; }
-  #matched b { color:var(--gold); }
-  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; margin-top:12px; }
-  .tile { background:#0b0b10; border:1px solid var(--line); border-radius:10px; padding:6px; }
+  #note { font-size:12.5px; color:var(--dim); margin-top:6px; }
+  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:11px; margin-top:12px; }
+  .tile { background:#0b0b10; border:1px solid var(--line); border-radius:10px; padding:7px; }
   .tile canvas { width:100%; height:auto; display:block; border-radius:6px; }
-  .tcap { font-size:11.5px; color:var(--dim); text-align:center; margin-top:5px; }
+  .tcap { font-size:12px; color:var(--dim); text-align:center; margin-top:6px; }
+  .tsub { font-size:10px; color:#6a6a75; }
   .tile.orig { border-color:#3a4a5a; } .tile.orig .tcap { color:var(--blue); font-weight:600; }
-  .tile.match { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset; } .tile.match .tcap { color:var(--gold); font-weight:600; }
-  footer { max-width:1200px; margin:18px auto 0; color:#55565f; font-size:11.5px; }
+  footer { max-width:1150px; margin:18px auto 0; color:#55565f; font-size:11.5px; }
 </style>
 </head>
 <body>
 <header>
   <h1>Record &amp; Render Portal</h1>
-  <div class="sub">Record on webcam <em>or upload a video</em> → see your motion rendered as the original skeleton and re-styled across dance genres. Browser MVP of the installation. · <a href="/">dashboard</a> · <a href="/dance-graph">tool graph</a></div>
+  <div class="sub">Record on webcam <em>or upload a video</em> → your identity movement, rendered as the original plus slight genre editions. Browser MVP of the installation. · <a href="/">dashboard</a> · <a href="/dance-graph">tool graph</a></div>
 </header>
 
 <div id="banner"></div>
@@ -87,9 +86,9 @@
     <div class="meta" id="recMeta">Initializing camera &amp; pose model…</div>
   </div>
 
-  <!-- ============ RENDER: original + genre versions ============ -->
+  <!-- ============ RENDER: original + 3 genre editions ============ -->
   <div class="card">
-    <h2>Render — original + genre versions</h2>
+    <h2>Render — original + genre editions</h2>
     <div class="row">
       <button class="primary" id="playBtn" disabled>▶ Play</button>
       <button id="loopBtn" disabled>Loop: on</button>
@@ -97,16 +96,17 @@
       <button id="dlBtn" disabled>⬇ JSON</button>
       <input type="range" id="scrub" min="0" max="0" value="0" style="flex:1;min-width:120px" disabled>
     </div>
-    <div id="matched" class="meta">No clip yet — record or upload one on the left.</div>
+    <div id="note">No clip yet — record or upload one on the left.</div>
     <div id="grid"></div>
   </div>
 </div>
 
 <footer>
-  Runs entirely in your browser (nothing is uploaded). Pose via MediaPipe Tasks Vision (CDN). The genre tiles are
-  <b>stylized previews</b> — the same captured motion re-shaped by each genre's motion signature (energy, verticality,
-  arm-lead, expansiveness, bounce, turn). They are a heuristic proxy, <b>not</b> the identity-preserving zone-α blend,
-  which runs in the local pipeline. “Original” is your true captured motion; “⬇ JSON” exports it (HumanML3D-22, y-up).
+  Runs entirely in your browser (nothing is uploaded). Pose via MediaPipe Tasks Vision (CDN).
+  <b>First principle: protect the identity movement.</b> The genre tiles keep your exact motion trajectory and only
+  apply a slight edition — a small change in <b>scale</b> (amplitude of movement about your mean pose) and
+  <b>frequency</b> (a gentle time-modulation/bounce). They are previews of the idea; the full identity-preserving
+  zone-α blend runs in the local pipeline. “Original” is untouched; “⬇ JSON” exports it (HumanML3D-22, y-up).
 </footer>
 
 <script type="module">
@@ -123,26 +123,18 @@ const PARENTS = [-1,0,0,0,1,2,3,4,5,6,7,8,9,9,9,12,13,14,16,17,18,19];
 const BONES = []; for (let j=1;j<22;j++) BONES.push([PARENTS[j], j]);
 const MAX_FRAMES = 900;
 
-// features order: [energy, verticality, upperRatio, expansive, rhythm, armElev, sharpness, spin]
-const FEATS = ["energy","verticality","upperRatio","expansive","rhythm","armElev","sharpness","spin"];
-const TRAIT_WORDS = { energy:"high energy", verticality:"vertical/jumps", upperRatio:"arm-led",
-  expansive:"expansive", rhythm:"rhythmic groove", armElev:"arms high", sharpness:"sharp/staccato", spin:"turning" };
+// Only 3 editions. First principle = protect identity: keep the trajectory, vary SCALE (amplitude
+// about the mean pose) and FREQUENCY (a gentle time-modulation + bounce) only, all subtle.
+//   scale ~1 → identity preserved · mod = ±modulation depth · freq = cycles over the clip · bounce/lift small
 const GENRES = [
-  { name:"Break",       p:[0.85,0.80,0.50,0.85,0.55,0.55,0.75,0.75] },
-  { name:"Pop",         p:[0.50,0.20,0.62,0.50,0.85,0.55,0.95,0.25] },
-  { name:"Lock",        p:[0.55,0.25,0.72,0.62,0.80,0.75,0.80,0.30] },
-  { name:"Hip-hop",     p:[0.55,0.45,0.50,0.50,0.85,0.50,0.55,0.30] },
-  { name:"House",       p:[0.80,0.45,0.35,0.55,0.95,0.35,0.55,0.50] },
-  { name:"Waack",       p:[0.75,0.20,0.88,0.80,0.80,0.92,0.85,0.50] },
-  { name:"Krump",       p:[0.95,0.45,0.60,0.90,0.55,0.75,0.95,0.45] },
-  { name:"Street Jazz", p:[0.65,0.50,0.55,0.85,0.55,0.75,0.55,0.75] },
-  { name:"Ballet Jazz", p:[0.55,0.65,0.50,0.95,0.35,0.80,0.30,0.80] },
+  { name:"Jazz",    sub:"scale +8% · med freq",  scale:1.08, freq:2, mod:0.08, bounce:0.015, lift:0.0  },
+  { name:"Ballet",  sub:"scale +18% · smooth",   scale:1.18, freq:1, mod:0.06, bounce:0.0,   lift:0.03 },
+  { name:"Hip-hop", sub:"scale -4% · bouncy",    scale:0.96, freq:3, mod:0.10, bounce:0.030, lift:0.0  },
 ];
 
 function v(lm,i){ return [lm[i].x, lm[i].y, lm[i].z]; }
 function mid(a,b){ return [(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2]; }
 function lerp(a,b,t){ return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
-function clamp01(x){ return Math.max(0,Math.min(1,x)); }
 
 function mp33to22(lm){
   const j = Array.from({length:22}, ()=>[0,0,0]);
@@ -162,66 +154,21 @@ function mp33to22(lm){
 }
 function toYupHip(j22){ const p=j22[H.pelvis]; return j22.map(q=>[q[0]-p[0], -(q[1]-p[1]), -(q[2]-p[2])]); }
 
-// ---------- feature extraction + classify ----------
-function extractFeatures(clip){
-  const T=clip.length, U=new Set([12,13,14,15,16,17,18,19,20,21]), L=new Set([1,2,4,5,7,8,10,11]);
-  let speed=0, vert=0, hor=0, up=0, low=0, jerk=0; const sig=[]; let prev=null;
-  for(let t=1;t<T;t++){
-    let fs=0; const vel=[];
-    for(let j=0;j<22;j++){
-      const dx=clip[t][j][0]-clip[t-1][j][0], dy=clip[t][j][1]-clip[t-1][j][1], dz=clip[t][j][2]-clip[t-1][j][2];
-      const d=Math.hypot(dx,dy,dz); fs+=d; vert+=Math.abs(dy); hor+=Math.abs(dx)+Math.abs(dz);
-      if(U.has(j)) up+=d; if(L.has(j)) low+=d; vel.push([dx,dy,dz]);
-    }
-    speed+=fs; sig.push(fs);
-    if(prev){ let jf=0; for(let j=0;j<22;j++) jf+=Math.hypot(vel[j][0]-prev[j][0],vel[j][1]-prev[j][1],vel[j][2]-prev[j][2]); jerk+=jf; }
-    prev=vel;
-  }
-  let armEl=0, exp=0; const az=[];
-  for(let t=0;t<T;t++){
-    armEl += ((clip[t][20][1]-clip[t][16][1])+(clip[t][21][1]-clip[t][17][1]))/2;
-    let e=0; for(let j=0;j<22;j++) e+=Math.hypot(clip[t][j][0],clip[t][j][1],clip[t][j][2]); exp+=e/22;
-    az.push(Math.atan2(clip[t][17][2]-clip[t][16][2], clip[t][17][0]-clip[t][16][0]));
-  }
-  let spin=0; for(let t=1;t<T;t++){ let d=az[t]-az[t-1]; while(d>Math.PI)d-=2*Math.PI; while(d<-Math.PI)d+=2*Math.PI; spin+=Math.abs(d); }
-  const nF=Math.max(1,T-1);
-  let rhythm=0; { const m=sig.reduce((a,b)=>a+b,0)/Math.max(1,sig.length);
-    const c=sig.map(x=>x-m); const den=c.reduce((a,b)=>a+b*b,0)||1;
-    for(let lag=3; lag<Math.min(sig.length/2,45); lag++){ let s=0; for(let i=0;i+lag<c.length;i++) s+=c[i]*c[i+lag]; rhythm=Math.max(rhythm,s/den); }
-    rhythm=clamp01(rhythm); }
-  return { energy:clamp01((speed/(nF*22))/0.03), verticality:clamp01(vert/(vert+hor||1)),
-    upperRatio:clamp01(up/(up+low||1)), expansive:clamp01((exp/T-0.30)/0.40), rhythm,
-    armElev:clamp01(((armEl/T)+0.40)/0.70), sharpness:clamp01((jerk/(nF*22))/0.02), spin:clamp01((spin/nF)/0.25) };
-}
-function classify(f){
-  const vec=FEATS.map(k=>f[k]);
-  const scored=GENRES.map(g=>{ let d=0; for(let i=0;i<vec.length;i++){ const e=vec[i]-g.p[i]; d+=e*e; } return { name:g.name, dist:Math.sqrt(d) }; });
-  const ex=scored.map(s=>Math.exp(-s.dist/0.35)); const Z=ex.reduce((a,b)=>a+b,0)||1;
-  scored.forEach((s,i)=>s.conf=ex[i]/Z); scored.sort((a,b)=>b.conf-a.conf); return scored;
-}
-function topTraits(f){ return FEATS.map(k=>[k,f[k]]).sort((a,b)=>b[1]-a[1]).slice(0,3).filter(([,x])=>x>0.45).map(([k])=>TRAIT_WORDS[k]); }
-
-// ---------- genre stylization (heuristic preview) ----------
+// ---------- identity-preserving edition: same trajectory, slight scale + frequency modulation ----------
 function meanPose(clip){ const T=clip.length, m=Array.from({length:22},()=>[0,0,0]);
   for(const f of clip) for(let j=0;j<22;j++){ m[j][0]+=f[j][0]; m[j][1]+=f[j][1]; m[j][2]+=f[j][2]; }
   for(let j=0;j<22;j++){ m[j][0]/=T; m[j][1]/=T; m[j][2]/=T; } return m; }
-function stylize(clip, p){
-  const T=clip.length, m=meanPose(clip);
-  const UP=new Set([12,13,14,15,16,17,18,19,20,21]), ARM=new Set([18,19,20,21]);
-  const [energy,vert,upper,exp,rhythm,armEl,sharp,spin]=p;
-  const amp=0.75+energy*0.6, sxz=0.7+exp*0.8, sy=0.8+vert*0.6, su=0.7+upper*0.9, sl=1.35-upper*0.8;
-  const cycles=1+Math.round(rhythm*4);
-  const out=[];
+function edition(clip, g){
+  const T=clip.length, m=meanPose(clip), out=[];
   for(let t=0;t<T;t++){
-    const bounce=vert*0.10*Math.sin(2*Math.PI*cycles*t/Math.max(1,T));
-    const ang=spin*Math.PI*1.4*(t/Math.max(1,T)), ca=Math.cos(ang), sa=Math.sin(ang);
+    const ph = 2*Math.PI*g.freq*t/Math.max(1,T);
+    const amp = g.scale * (1 + g.mod*Math.sin(ph));   // scale (identity ~preserved) + subtle frequency modulation
+    const by  = g.bounce*Math.sin(ph) + g.lift;        // gentle vertical bounce/lift
     const fr=[];
     for(let j=0;j<22;j++){
-      let dx=(clip[t][j][0]-m[j][0]), dy=(clip[t][j][1]-m[j][1]), dz=(clip[t][j][2]-m[j][2]);
-      const zone=UP.has(j)?su:sl; dx*=sxz*amp*zone; dy*=sy*amp*zone; dz*=sxz*amp*zone;
-      let x=m[j][0]+dx, y=m[j][1]+dy+bounce, z=m[j][2]+dz;
-      if(ARM.has(j)) y+=armEl*0.18;
-      fr.push([x*ca+z*sa, y, -x*sa+z*ca]);
+      fr.push([ m[j][0]+(clip[t][j][0]-m[j][0])*amp,
+                m[j][1]+(clip[t][j][1]-m[j][1])*amp + by,
+                m[j][2]+(clip[t][j][2]-m[j][2])*amp ]);
     }
     out.push(fr);
   }
@@ -237,18 +184,19 @@ const recBtn=document.getElementById("recBtn"), stopBtn=document.getElementById(
 const playBtn=document.getElementById("playBtn"), loopBtn=document.getElementById("loopBtn");
 const spinBtn=document.getElementById("spinBtn"), dlBtn=document.getElementById("dlBtn");
 const scrub=document.getElementById("scrub"), durSel=document.getElementById("dur");
-const recMeta=document.getElementById("recMeta"), matched=document.getElementById("matched");
+const recMeta=document.getElementById("recMeta"), note=document.getElementById("note");
 const camdot=document.getElementById("camdot"), grid=document.getElementById("grid");
 const videoFile=document.getElementById("videoFile"), fileLabel=document.getElementById("fileLabel");
 
-// build tiles: Original + one per genre
-const TILES=[{name:"Original",orig:true}].concat(GENRES.map(g=>({name:g.name,p:g.p})));
+// 4 tiles: Original + Jazz + Ballet + Hip-hop
+const TILES=[{name:"Original",sub:"your identity movement",orig:true}].concat(GENRES);
 const tiles = TILES.map(t=>{
   const cell=document.createElement("div"); cell.className="tile"+(t.orig?" orig":"");
   const cv=document.createElement("canvas"); cv.width=260; cv.height=240;
-  const cap=document.createElement("div"); cap.className="tcap"; cap.textContent=t.name;
+  const cap=document.createElement("div"); cap.className="tcap";
+  cap.innerHTML=`${t.name}${t.sub?`<br><span class="tsub">${t.sub}</span>`:""}`;
   cell.appendChild(cv); cell.appendChild(cap); grid.appendChild(cell);
-  return { name:t.name, orig:!!t.orig, p:t.p, cell, ctx:cv.getContext("2d"), w:cv.width, h:cv.height, clip:null, fit:null };
+  return { name:t.name, orig:!!t.orig, g:t.orig?null:t, ctx:cv.getContext("2d"), w:cv.width, h:cv.height, clip:null, fit:null };
 });
 
 let landmarker=null, camReady=false, recording=false, source="cam";
@@ -327,16 +275,12 @@ function finishUpload(){ if(source!=="file") return; recording=false; upvideo.on
   if(recFrames.length<2){ recMeta.textContent="No pose found in that video — try one with a full body visible."; return; }
   finalizeClip(Math.max(1,Math.round(recFrames.length/Math.max(0.1,dur))), recFrames.length>=MAX_FRAMES); }
 
-// ---------- finalize: build original + genre tiles, classify ----------
+// ---------- finalize: build the 4 tiles ----------
 function finalizeClip(fps, truncated){
   clipFps=fps; clip=recFrames.slice();
   recMeta.textContent=`Captured ${clip.length} frames (~${clipFps} fps)`+(truncated?` — capped at ${MAX_FRAMES}`:"")+".";
-  for(const to of tiles){ to.clip = to.orig ? clip : stylize(clip, to.p); to.fit=computeFit(to.clip,to.w,to.h); to.cell.classList.remove("match"); }
-  const f=extractFeatures(clip), ranked=classify(f), best=ranked[0];
-  const tr=topTraits(f);
-  const cell=tiles.find(t=>t.name===best.name); if(cell) cell.cell.classList.add("match");
-  matched.innerHTML=`Matched to your motion: <b>${best.name}</b> (${Math.round(best.conf*100)}%)`
-    + (tr.length?` · traits: ${tr.join(" · ")}`:"");
+  for(const to of tiles){ to.clip = to.orig ? clip : edition(clip, to.g); to.fit=computeFit(to.clip,to.w,to.h); }
+  note.innerHTML=`Original identity movement + 3 editions — same trajectory, slight change in scale &amp; frequency.`;
   scrub.max=clip.length-1; scrub.value=0; scrub.disabled=false;
   playBtn.disabled=false; loopBtn.disabled=false; spinBtn.disabled=false; dlBtn.disabled=false;
   frameIdx=0; playing=true; lastFrameT=performance.now(); playBtn.textContent="⏸ Pause";
@@ -362,7 +306,7 @@ function drawTile(to, frame){
     ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${0.5+0.5*zt})`;
     ctx.beginPath(); ctx.moveTo(P[a][0],P[a][1]); ctx.lineTo(P[b][0],P[b][1]); ctx.stroke(); }
   ctx.fillStyle="#ffd24d";
-  for(const p of P){ ctx.beginPath(); ctx.arc(p[0],p[1],2.6,0,7); ctx.fill(); }
+  for(const p of P){ ctx.beginPath(); ctx.arc(p[0],p[1],2.8,0,7); ctx.fill(); }
 }
 function playLoop(){
   if(!clip) return;
