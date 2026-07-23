@@ -14,7 +14,8 @@ end-to-end run happens locally (needs a webcam, your `semantic_spectrum`, and AI
 | `genre_style.py` | identity-preserving per-zone genre style transfer (rhythm-align + zone-α) | proxy runs, `test_genre_style.py` 7/7; 2 ADAPT points for the real encoder |
 | `video_to_reference.py` | dance video (AIST DB) -> HumanML3D-22 reference JSON (MediaPipe) | reuses stage12 |
 | `aist_to_reference.py` | AIST++ SMPL motion -> HumanML3D-22 reference JSON | scaffold, 1 ADAPT (SMPL forward) |
-| `run_local.py` | end-to-end: visitor + genre reference -> transfer -> VMC->Unity | `test_run_local.py` 6/6 |
+| `run_local.py` | end-to-end: visitor + genre reference -> transfer/enhance -> VMC->Unity | `test_run_local.py` 6/6 |
+| `genre_motifs.py` | motif matching: recognize genre in your motion, similarity-gated boost + allocation | `test_genre_motifs.py` 8/8 |
 
 | `UNITY_SETUP.md` | Stage 3 / afternoon Unity receiver setup | notes |
 

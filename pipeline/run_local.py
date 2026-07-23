@@ -35,12 +35,17 @@ def resolve_reference(reference, genre, refs_dir):
     raise SystemExit(f"no reference for genre '{genre}' in {refs_dir} (looked for {pats})")
 
 
-def run(visitor_path, reference_path, alpha):
+def run(visitor_path, reference_path, alpha, enhance=False):
     visitor = genre_style.load_clip(visitor_path)
     reference = genre_style.load_clip(reference_path)
-    a = {z: alpha for z in genre_style.ZONES} if alpha is not None else None
-    styled = genre_style.transfer(visitor, reference, a)
-    return visitor, reference, styled.astype(np.float32)
+    if enhance:
+        import genre_motifs
+        styled, sim = genre_motifs.enhance(visitor, reference, base_alpha=alpha if alpha is not None else 0.45)
+        print(f"[enhance] motif similarity to this genre: {sim:.3f}")
+    else:
+        a = {z: alpha for z in genre_style.ZONES} if alpha is not None else None
+        styled = genre_style.transfer(visitor, reference, a)
+    return visitor, reference, np.asarray(styled, dtype=np.float32)
 
 
 def stream(styled, host, port, fps, loop):
@@ -67,6 +72,8 @@ def main():
     ap.add_argument("--genre", help="genre name (resolved against --refs-dir) instead of --reference")
     ap.add_argument("--refs-dir", default="refs", help="folder of genre reference clips")
     ap.add_argument("--alpha", type=float, default=0.5, help="identity<->style weight 0..1 (0=you, 1=full genre)")
+    ap.add_argument("--enhance", action="store_true", help="motif-gated: boost genre where you resemble its signature moves")
+    ap.add_argument("--report", action="store_true", help="print which genre your motion most resembles (allocation)")
     ap.add_argument("--out", default="styled.npy")
     ap.add_argument("--stream", action="store_true", help="stream the styled clip to Unity over VMC")
     ap.add_argument("--host", default="127.0.0.1"); ap.add_argument("--port", type=int, default=39539)
@@ -76,8 +83,19 @@ def main():
     a.reference = os.path.expanduser(a.reference) if a.reference else a.reference
     a.refs_dir, a.out = os.path.expanduser(a.refs_dir), os.path.expanduser(a.out)
 
+    if a.report:
+        import glob, genre_motifs
+        refs = {os.path.splitext(os.path.basename(p))[0]: genre_style.load_clip(p)
+                for p in sorted(glob.glob(os.path.join(a.refs_dir, "*.json")) + glob.glob(os.path.join(a.refs_dir, "*.npy")))}
+        vis = genre_style.load_clip(a.visitor)
+        print("[allocation] the genre your body most resembles:")
+        for g, s in sorted(genre_motifs.allocate(vis, refs).items(), key=lambda kv: -kv[1]):
+            print(f"  {g:12s} similarity {s:.3f}")
+        if not a.genre and not a.reference:
+            return
+
     ref = resolve_reference(a.reference, a.genre, a.refs_dir)
-    visitor, reference, styled = run(a.visitor, ref, a.alpha)
+    visitor, reference, styled = run(a.visitor, ref, a.alpha, enhance=a.enhance)
     np.save(a.out, styled)
     print(f"[run_local] visitor {visitor.shape} + reference {reference.shape} ({os.path.basename(ref)}) "
           f"-> styled {styled.shape} @ alpha={a.alpha} -> {a.out}")
