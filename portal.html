@@ -199,8 +199,17 @@ const tiles = TILES.map(t=>{
   return { name:t.name, orig:!!t.orig, g:t.orig?null:t, ctx:cv.getContext("2d"), w:cv.width, h:cv.height, clip:null, fit:null };
 });
 
-let landmarker=null, camReady=false, recording=false, source="cam";
+let landmarker=null, camReady=false, recording=false, source="cam", replaying=false;
 let recFrames=[], recStart=0, recStopAt=0, fileURL=null, clip=null, clipFps=30;
+
+// leave the uploaded-video replay mode and return the capture panel to the webcam
+function exitReplay(){
+  if(!replaying) return;
+  replaying=false; upvideo.loop=false; upvideo.pause();
+  upvideo.style.display="none"; video.style.display="block";
+  overlay.width=video.videoWidth||640; overlay.height=video.videoHeight||480;
+  octx.clearRect(0,0,overlay.width,overlay.height);
+}
 
 // ---------- init ----------
 async function init(){
@@ -224,6 +233,7 @@ async function init(){
 // ---------- capture loop (webcam + uploaded video) ----------
 let lastT=-1;
 function loop(){
+  if(replaying){ requestAnimationFrame(loop); return; }   // uploaded clip is looping as a replay — skip detection
   const vid = source==="file"?upvideo:video;
   const ready = source==="file" ? (upvideo.readyState>=2 && !upvideo.paused && !upvideo.ended) : (camReady && video.readyState>=2);
   if (landmarker && ready && vid.currentTime!==lastT){
@@ -255,24 +265,31 @@ function drawOverlay(j22, mirror){
 }
 
 // ---------- record / upload ----------
-recBtn.onclick=()=>{ source="cam"; recFrames=[]; recording=true; recStart=performance.now(); recStopAt=recStart+parseFloat(durSel.value)*1000;
+recBtn.onclick=()=>{ exitReplay(); source="cam"; recFrames=[]; recording=true; recStart=performance.now(); recStopAt=recStart+parseFloat(durSel.value)*1000;
   recBtn.disabled=true; stopBtn.disabled=false; durSel.disabled=true; videoFile.disabled=true; fileLabel.classList.add("dis"); };
 stopBtn.onclick=()=>{ source==="file"?finishUpload():stopRecording(); };
 function stopRecording(){ if(!recording) return; recording=false; recBtn.disabled=false; stopBtn.disabled=true; durSel.disabled=false;
   videoFile.disabled=false; fileLabel.classList.remove("dis"); finalizeClip(Math.max(1,Math.round(recFrames.length/((performance.now()-recStart)/1000)))); }
 videoFile.onchange=async(e)=>{ const f=e.target.files[0]; if(!f) return;
   if(!landmarker){ showBanner("Pose model isn't ready yet — wait a moment and retry.","err"); return; }
+  exitReplay();
   if(fileURL) URL.revokeObjectURL(fileURL); fileURL=URL.createObjectURL(f);
-  upvideo.src=fileURL; upvideo.currentTime=0; video.style.display="none"; upvideo.style.display="block";
+  upvideo.src=fileURL; upvideo.loop=false; upvideo.currentTime=0; video.style.display="none"; upvideo.style.display="block";
   await upvideo.play().catch(()=>{}); overlay.width=upvideo.videoWidth||640; overlay.height=upvideo.videoHeight||480;
   source="file"; recFrames=[]; recording=true; recStart=performance.now();
   recBtn.disabled=true; stopBtn.disabled=false; durSel.disabled=true; recMeta.innerHTML=`<span class="dot rec"></span>Processing video…`;
   upvideo.onended=finishUpload; };
-function finishUpload(){ if(source!=="file") return; recording=false; upvideo.onended=null; upvideo.pause();
+function finishUpload(){ if(source!=="file") return; recording=false; upvideo.onended=null;
   const dur=upvideo.duration||((performance.now()-recStart)/1000);
-  video.style.display="block"; upvideo.style.display="none"; overlay.width=video.videoWidth||640; overlay.height=video.videoHeight||480;
   source="cam"; recBtn.disabled=!camReady; stopBtn.disabled=true; durSel.disabled=false; videoFile.disabled=false; fileLabel.classList.remove("dis"); videoFile.value="";
-  if(recFrames.length<2){ recMeta.textContent="No pose found in that video — try one with a full body visible."; return; }
+  octx.clearRect(0,0,overlay.width,overlay.height);
+  if(recFrames.length<2){
+    upvideo.pause(); upvideo.style.display="none"; video.style.display="block";
+    overlay.width=video.videoWidth||640; overlay.height=video.videoHeight||480;
+    recMeta.textContent="No pose found in that video — try one with a full body visible."; return;
+  }
+  // success: keep the uploaded video replaying (looping) in the capture panel next to the transformed tiles
+  replaying=true; upvideo.loop=true; upvideo.currentTime=0; upvideo.play().catch(()=>{});
   finalizeClip(Math.max(1,Math.round(recFrames.length/Math.max(0.1,dur))), recFrames.length>=MAX_FRAMES); }
 
 // ---------- finalize: build the 4 tiles ----------
