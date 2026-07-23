@@ -103,6 +103,8 @@ def main():
     ap.add_argument("--visitor", required=True, help="visitor clip (.json from portal / video, or .npy)")
     ap.add_argument("--refs-dir", default="refs", help="folder of genre reference clips")
     ap.add_argument("--alpha", type=float, default=0.45, help="identity<->genre floor (0..1)")
+    ap.add_argument("--model", help="trained proto encoder checkpoint (.pt from train_proto.py); "
+                                    "uses the LEARNED embedding for compare/allocate (needs torch)")
     ap.add_argument("--out", default="edited.npy", help="edited clip output (.npy)")
     a = ap.parse_args()
     a.visitor, a.refs_dir, a.out = map(os.path.expanduser, (a.visitor, a.refs_dir, a.out))
@@ -112,7 +114,13 @@ def main():
     if not refs:
         raise SystemExit(f"no genre references in {a.refs_dir}")
 
-    edited, rep = unnoticed_dance(visitor, refs, base_alpha=a.alpha)
+    models = None
+    if a.model:
+        from proto_infer import build_learned_models
+        models = build_learned_models(refs, os.path.expanduser(a.model))
+        print(f"[unnoticed_dance] using LEARNED prototypical encoder: {a.model}")
+
+    edited, rep = unnoticed_dance(visitor, refs, base_alpha=a.alpha, models=models)
     np.save(a.out, edited.astype(np.float32))
 
     print("[unnoticed_dance] read -> compare -> allocate -> edit")
