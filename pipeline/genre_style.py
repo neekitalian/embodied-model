@@ -90,8 +90,10 @@ def transfer(visitor, reference, alpha=None):
     The overall style strength (mean alpha) scales the WHOLE effect - rhythm, zone reshaping, and
     smoothing - so alpha=0 returns the visitor untouched (identity), and alpha=1 is full genre."""
     alpha = {**DEFAULT_ALPHA, **(alpha or {})}
-    T = min(len(visitor), len(reference))
-    visitor, reference = visitor[:T], reference[:T]
+    # keep the FULL visitor length: the reference only supplies style statistics + a beat phase,
+    # so a 30s capture styled by a 6s reference stays 30s (mirrors the portal.html fix)
+    visitor = np.asarray(visitor, dtype=np.float32)
+    T = len(visitor)
     strength = float(np.mean([alpha.get(z, 0.4) for z in ZONES]))
 
     # rhythm: warp visitor to the reference beat, blended in by overall strength (0 -> no warp)
