@@ -103,10 +103,11 @@
 
 <footer>
   Runs entirely in your browser (nothing is uploaded). Pose via MediaPipe Tasks Vision (CDN).
-  <b>First principle: protect the identity movement.</b> The genre tiles keep your exact motion trajectory and only
-  apply a slight edition — a small change in <b>scale</b> (amplitude of movement about your mean pose) and
-  <b>frequency</b> (a gentle time-modulation/bounce). They are previews of the idea; the full identity-preserving
-  zone-α blend runs in the local pipeline. “Original” is untouched; “⬇ JSON” exports it (HumanML3D-22, y-up).
+  <b>First principle: protect the identity movement.</b> Each genre tile keeps your exact motion trajectory and
+  re-shapes its <b>character</b>: per-zone amplitude (arm-led vs grounded), vertical stretch/compress (silhouette),
+  spread, and timing (flowing vs accented). All four share one framing so the differences are visible. These are
+  heuristic previews; the full identity-preserving zone-α blend runs in the local pipeline. “Original” is untouched;
+  “⬇ JSON” exports it (HumanML3D-22, y-up).
 </footer>
 
 <script type="module">
@@ -126,10 +127,17 @@ const MAX_FRAMES = 900;
 // Only 3 editions. First principle = protect identity: keep the trajectory, vary SCALE (amplitude
 // about the mean pose) and FREQUENCY (a gentle time-modulation + bounce) only, all subtle.
 //   scale ~1 → identity preserved · mod = ±modulation depth · freq = cycles over the clip · bounce/lift small
+// Each edition keeps your trajectory but changes CHARACTER, not just size:
+//   arm/leg = per-zone amplitude (posture) · ystretch = vertical extension vs compression (silhouette)
+//   sway = horizontal spread · crouch = grounded/lifted · bounce/cyc = rhythmic pulse
+//   emaAlpha+sharp = timing (low sharp -> flowing, high sharp -> staccato/accented)
 const GENRES = [
-  { name:"Jazz",    sub:"scale +8% · med freq",  scale:1.08, freq:2, mod:0.08, bounce:0.015, lift:0.0  },
-  { name:"Ballet",  sub:"scale +18% · smooth",   scale:1.18, freq:1, mod:0.06, bounce:0.0,   lift:0.03 },
-  { name:"Hip-hop", sub:"scale -4% · bouncy",    scale:0.96, freq:3, mod:0.10, bounce:0.030, lift:0.0  },
+  { name:"Jazz",    sub:"extended · accented",
+    arm:1.35, leg:1.12, ystretch:1.06, sway:1.20, crouch:0.00,  bounce:0.02, cyc:2, emaAlpha:0.55, sharp:1.30 },
+  { name:"Ballet",  sub:"lifted · flowing",
+    arm:1.48, leg:1.22, ystretch:1.16, sway:0.92, crouch:0.05,  bounce:0.00, cyc:1, emaAlpha:0.30, sharp:0.70 },
+  { name:"Hip-hop", sub:"grounded · bouncy",
+    arm:0.92, leg:1.10, ystretch:0.90, sway:1.12, crouch:-0.06, bounce:0.06, cyc:3, emaAlpha:0.60, sharp:1.55 },
 ];
 
 function v(lm,i){ return [lm[i].x, lm[i].y, lm[i].z]; }
@@ -158,17 +166,32 @@ function toYupHip(j22){ const p=j22[H.pelvis]; return j22.map(q=>[q[0]-p[0], -(q
 function meanPose(clip){ const T=clip.length, m=Array.from({length:22},()=>[0,0,0]);
   for(const f of clip) for(let j=0;j<22;j++){ m[j][0]+=f[j][0]; m[j][1]+=f[j][1]; m[j][2]+=f[j][2]; }
   for(let j=0;j<22;j++){ m[j][0]/=T; m[j][1]/=T; m[j][2]/=T; } return m; }
+const ARMS=new Set([13,14,16,17,18,19,20,21]), LEGS=new Set([4,5,7,8,10,11]);
 function edition(clip, g){
-  const T=clip.length, m=meanPose(clip), out=[];
+  const T=clip.length, m=meanPose(clip);
+  // pass 1 — spatial character: per-zone amplitude, vertical stretch/compress, spread, crouch, bounce
+  const S=[];
   for(let t=0;t<T;t++){
-    const ph = 2*Math.PI*g.freq*t/Math.max(1,T);
-    const amp = g.scale * (1 + g.mod*Math.sin(ph));   // scale (identity ~preserved) + subtle frequency modulation
-    const by  = g.bounce*Math.sin(ph) + g.lift;        // gentle vertical bounce/lift
+    const by = g.crouch + g.bounce*Math.sin(2*Math.PI*g.cyc*t/Math.max(1,T));
     const fr=[];
     for(let j=0;j<22;j++){
-      fr.push([ m[j][0]+(clip[t][j][0]-m[j][0])*amp,
-                m[j][1]+(clip[t][j][1]-m[j][1])*amp + by,
-                m[j][2]+(clip[t][j][2]-m[j][2])*amp ]);
+      const z = ARMS.has(j)?g.arm : LEGS.has(j)?g.leg : 1;
+      const dx=(clip[t][j][0]-m[j][0])*z*g.sway;
+      const dy=(clip[t][j][1]-m[j][1])*z*g.ystretch;
+      const dz=(clip[t][j][2]-m[j][2])*z*g.sway;
+      fr.push([ m[j][0]+dx, m[j][1]+dy+by, m[j][2]+dz ]);
+    }
+    S.push(fr);
+  }
+  // pass 2 — temporal character: EMA baseline + detail*sharp (ballet flows; jazz/hip-hop accent). Trajectory kept.
+  const out=[]; const ema=S[0].map(p=>p.slice());
+  for(let t=0;t<T;t++){
+    const fr=[];
+    for(let j=0;j<22;j++){
+      for(let k=0;k<3;k++) ema[j][k] = g.emaAlpha*S[t][j][k] + (1-g.emaAlpha)*ema[j][k];
+      fr.push([ ema[j][0]+(S[t][j][0]-ema[j][0])*g.sharp,
+                ema[j][1]+(S[t][j][1]-ema[j][1])*g.sharp,
+                ema[j][2]+(S[t][j][2]-ema[j][2])*g.sharp ]);
     }
     out.push(fr);
   }
@@ -296,8 +319,10 @@ function finishUpload(){ if(source!=="file") return; recording=false; upvideo.on
 function finalizeClip(fps, truncated){
   clipFps=fps; clip=recFrames.slice();
   recMeta.textContent=`Captured ${clip.length} frames (~${clipFps} fps)`+(truncated?` — capped at ${MAX_FRAMES}`:"")+".";
-  for(const to of tiles){ to.clip = to.orig ? clip : edition(clip, to.g); to.fit=computeFit(to.clip,to.w,to.h); }
-  note.innerHTML=`Original identity movement + 3 editions — same trajectory, slight change in scale &amp; frequency.`;
+  for(const to of tiles){ to.clip = to.orig ? clip : edition(clip, to.g); }
+  const sharedFit = computeFit(tiles.flatMap(to=>to.clip), tiles[0].w, tiles[0].h);  // one framing for all -> differences show
+  for(const to of tiles){ to.fit = sharedFit; }
+  note.innerHTML=`Original identity movement + 3 editions — same trajectory, re-shaped per genre (posture, spread, timing). Shared framing so the differences show.`;
   scrub.max=clip.length-1; scrub.value=0; scrub.disabled=false;
   playBtn.disabled=false; loopBtn.disabled=false; spinBtn.disabled=false; dlBtn.disabled=false;
   frameIdx=0; playing=true; lastFrameT=performance.now(); playBtn.textContent="⏸ Pause";
