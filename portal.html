@@ -94,6 +94,7 @@
       <button id="loopBtn" disabled>Loop: on</button>
       <button id="spinBtn" disabled>Spin: off</button>
       <button id="dlBtn" disabled>⬇ JSON</button>
+      <button id="vidBtn" disabled>⬇ Video</button>
       <label style="font-size:12px;color:var(--dim);white-space:nowrap">genre α <input type="range" id="alpha" min="0" max="0.9" step="0.05" value="0.45" style="width:80px;vertical-align:middle"></label>
       <input type="range" id="scrub" min="0" max="0" value="0" style="flex:1;min-width:120px" disabled>
     </div>
@@ -293,7 +294,7 @@ const video=document.getElementById("video"), upvideo=document.getElementById("u
 const overlay=document.getElementById("overlay"), octx=overlay.getContext("2d");
 const recBtn=document.getElementById("recBtn"), stopBtn=document.getElementById("stopBtn");
 const playBtn=document.getElementById("playBtn"), loopBtn=document.getElementById("loopBtn");
-const spinBtn=document.getElementById("spinBtn"), dlBtn=document.getElementById("dlBtn");
+const spinBtn=document.getElementById("spinBtn"), dlBtn=document.getElementById("dlBtn"), vidBtn=document.getElementById("vidBtn");
 const scrub=document.getElementById("scrub"), durSel=document.getElementById("dur");
 const recMeta=document.getElementById("recMeta"), note=document.getElementById("note");
 const camdot=document.getElementById("camdot"), grid=document.getElementById("grid");
@@ -412,7 +413,7 @@ function finalizeClip(fps, truncated){
   recMeta.textContent=`Captured ${clip.length} frames (~${clipFps} fps)`+(truncated?` - capped at ${MAX_FRAMES}`:"")+".";
   rebuildTiles();
   scrub.max=clip.length-1; scrub.value=0; scrub.disabled=false;
-  playBtn.disabled=false; loopBtn.disabled=false; spinBtn.disabled=false; dlBtn.disabled=false;
+  playBtn.disabled=false; loopBtn.disabled=false; spinBtn.disabled=false; dlBtn.disabled=false; vidBtn.disabled=false;
   frameIdx=0; playing=true; lastFrameT=performance.now(); playBtn.textContent="⏸ Pause";
   requestAnimationFrame(playLoop);
 }
@@ -474,6 +475,86 @@ spinBtn.onclick=()=>{ spin=!spin; spinBtn.textContent="Spin: "+(spin?"on":"off")
 scrub.oninput=()=>{ frameIdx=+scrub.value; playing=false; playBtn.textContent="▶ Play"; };
 dlBtn.onclick=()=>{ const blob=new Blob([JSON.stringify({ format:"HumanML3D-22", axes:"y-up, hip-centered", fps:clipFps, frames:clip.length, joints:clip })],{type:"application/json"});
   const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="visitor_clip.json"; a.click(); URL.revokeObjectURL(a.href); };
+
+// draw one skeleton into ctx at the current origin (mirrors drawTile, translatable)
+function drawSkelInto(ctx, j22, fit, col){
+  const ca=Math.cos(spinAng), sa=Math.sin(spinAng);
+  const P=j22.map(p=>[ fit.cx+(p[0]*ca+p[2]*sa)*fit.scale, fit.cy-p[1]*fit.scale, p[0]*(-sa)+p[2]*ca ]);
+  ctx.lineWidth=3; ctx.lineCap="round";
+  for(const [a,b] of BONES){ const zt=Math.max(0,Math.min(1,((P[a][2]+P[b][2])/2+0.5)));
+    ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${0.5+0.5*zt})`;
+    ctx.beginPath(); ctx.moveTo(P[a][0],P[a][1]); ctx.lineTo(P[b][0],P[b][1]); ctx.stroke(); }
+  ctx.fillStyle="#ffd24d";
+  for(const p of P){ ctx.beginPath(); ctx.arc(p[0],p[1],2.6,0,7); ctx.fill(); }
+}
+
+// export a side-by-side comparison video: source + Original(MediaPipe) + Jazz + Ballet + Hip-hop
+vidBtn.onclick = async () => {
+  if(!clip) return;
+  const hasSrc = !!(upvideo && upvideo.src);
+  const genreTiles = ["Jazz","Ballet","Hip-hop"].map(n=>tiles.find(t=>t.name===n)).filter(Boolean);
+  const panels = [];
+  if(hasSrc) panels.push({label:"Source video", kind:"video"});
+  panels.push({label:"MediaPipe (you)", kind:"skel", tile:tiles.find(t=>t.orig), col:[95,169,216]});
+  for(const t of genreTiles) panels.push({label:t.name, kind:"skel", tile:t, col:[106,208,127]});
+
+  const pw=260, ph=240, lab=24, gap=8, N=panels.length;
+  const cnv=document.createElement("canvas"); cnv.width=N*pw+(N+1)*gap; cnv.height=ph+lab+gap*2;
+  const g=cnv.getContext("2d");
+  const mimes=["video/mp4;codecs=avc1","video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"];
+  const mime=mimes.find(m=>window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+  if(!mime){ showBanner("Video recording isn't supported in this browser - try Chrome/Edge.","err"); return; }
+
+  function draw(i){
+    g.fillStyle="#0f0f14"; g.fillRect(0,0,cnv.width,cnv.height);
+    panels.forEach((p,idx)=>{
+      const x0=gap+idx*(pw+gap), y0=gap;
+      g.fillStyle="#0b0b10"; g.fillRect(x0,y0,pw,ph);
+      if(p.kind==="video" && hasSrc){
+        const vw=upvideo.videoWidth||4, vh=upvideo.videoHeight||3, sc=Math.min(pw/vw,ph/vh), dw=vw*sc, dh=vh*sc;
+        try{ g.drawImage(upvideo, x0+(pw-dw)/2, y0+(ph-dh)/2, dw, dh); }catch(e){}
+      } else if(p.kind==="skel" && p.tile && p.tile.clip){
+        g.save(); g.translate(x0,y0);
+        drawSkelInto(g, p.tile.clip[Math.min(i,p.tile.clip.length-1)], p.tile.fit, p.col);
+        g.restore();
+      }
+      g.fillStyle="#e8e8ee"; g.font="13px -apple-system,sans-serif"; g.textAlign="center";
+      g.fillText(p.label, x0+pw/2, y0+ph+16);
+    });
+  }
+
+  vidBtn.disabled=true; const wasReplaying=replaying;
+  const label0=recMeta.innerHTML; recMeta.innerHTML=`<span class="dot rec"></span>Recording comparison video…`;
+  const stream=cnv.captureStream(30);
+  const rec=new MediaRecorder(stream,{mimeType:mime, videoBitsPerSecond:8_000_000});
+  const chunks=[]; rec.ondataavailable=e=>{ if(e.data && e.data.size) chunks.push(e.data); };
+  const stopped=new Promise(r=>rec.onstop=r);
+  rec.start();
+  try {
+    if(hasSrc){
+      replaying=true;                       // pause the live detection loop while we drive upvideo
+      upvideo.loop=false; upvideo.muted=true; upvideo.currentTime=0;
+      await upvideo.play().catch(()=>{});
+      await new Promise(res=>{
+        function step(){
+          if(upvideo.ended || (upvideo.duration && upvideo.currentTime>=upvideo.duration-0.02)){ res(); return; }
+          draw(Math.min(clip.length-1, Math.round(upvideo.currentTime*clipFps)));
+          requestAnimationFrame(step);
+        }
+        requestAnimationFrame(step);
+      });
+    } else {
+      for(let i=0;i<clip.length;i++){ draw(i); await new Promise(r=>setTimeout(r,1000/clipFps)); }
+    }
+  } finally {
+    rec.stop(); await stopped;
+    const blob=new Blob(chunks,{type:mime});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download="unnoticed_dance_comparison."+(mime.includes("mp4")?"mp4":"webm"); a.click(); URL.revokeObjectURL(a.href);
+    vidBtn.disabled=false; recMeta.innerHTML=label0;
+    if(wasReplaying){ upvideo.loop=true; upvideo.currentTime=0; upvideo.play().catch(()=>{}); }  // resume replay
+  }
+};
 
 init();
 </script>
