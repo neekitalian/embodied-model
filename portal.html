@@ -252,8 +252,15 @@ function sig(clip, a, b){
   const n=Math.hypot(...v)||1; return v.map(x=>x/n);          // unit-normalized: match movement SHAPE, not energy
 }
 function motifBank(ref, win, stride){
-  const bank=[]; for(let a=0;a+win<=ref.length;a+=stride) bank.push(sig(ref,a,a+win));
-  if(!bank.length) bank.push(sig(ref,0,ref.length)); return bank;
+  const sigs=[]; for(let a=0;a+win<=ref.length;a+=stride) sigs.push(sig(ref,a,a+win));
+  if(sigs.length<=3) return sigs.length?sigs:[sig(ref,0,ref.length)];
+  // Scheme A - keep only the most DISTINCTIVE windows (far from the genre's own mean) = signature moves
+  const D=sigs[0].length, M=new Array(D).fill(0);
+  for(const s of sigs) for(let i=0;i<D;i++) M[i]+=s[i];
+  let n=Math.hypot(...M)||1; for(let i=0;i<D;i++) M[i]/=n;
+  const scored=sigs.map(s=>{ let d=0; for(let i=0;i<D;i++) d+=s[i]*M[i]; return {s, dist:1-d}; });
+  scored.sort((a,b)=>b.dist-a.dist);
+  return scored.slice(0, Math.max(3, Math.round(0.5*sigs.length))).map(o=>o.s);
 }
 function simCurve(visitor, ref, win=24, stride=12){
   const bank=motifBank(ref,win,stride), T=visitor.length, centers=[], vals=[];

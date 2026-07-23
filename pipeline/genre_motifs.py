@@ -33,10 +33,21 @@ def sig(clip, a, b):
     return v / n if n > 1e-8 else v
 
 
-def motif_bank(ref, win=24, stride=12):
+def motif_bank(ref, win=24, stride=12, salient=True, keep=0.5):
+    """Genre signature-move bank. salient=True keeps only the most DISTINCTIVE windows -- those whose
+    per-zone signature deviates most from the genre's own mean -- so the bank is the genre's signature
+    moves, not neutral filler (Scheme A: sharper recognition)."""
     if len(ref) < win:
         return [sig(ref, 0, len(ref))]
-    return [sig(ref, a, a + win) for a in range(0, len(ref) - win + 1, stride)]
+    sigs = [sig(ref, a, a + win) for a in range(0, len(ref) - win + 1, stride)]
+    if not salient or len(sigs) <= 3:
+        return sigs
+    M = np.mean(sigs, axis=0); n = np.linalg.norm(M)
+    Mu = M / n if n > 1e-8 else M
+    dist = np.array([1.0 - float(s @ Mu) for s in sigs])       # distinctiveness = far from genre mean
+    k = max(3, int(round(keep * len(sigs))))
+    keep_idx = np.argsort(dist)[::-1][:k]
+    return [sigs[i] for i in sorted(keep_idx)]
 
 
 def sim_curve(visitor, ref, win=24, stride=12):
