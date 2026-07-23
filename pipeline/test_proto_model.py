@@ -14,7 +14,7 @@ def ck(n, c): print(f"  [{'PASS' if c else 'FAIL'}] {n}"); return c
 ok = True
 
 # torch-free checks -----------------------------------------------------------
-for f in ("proto_model.py", "train_proto.py", "proto_infer.py"):
+for f in ("proto_model.py", "train_proto.py", "proto_infer.py", "pretrain_aist.py"):
     try:
         py_compile.compile(f, doraise=True); ok &= ck(f"{f} compiles", True)
     except py_compile.PyCompileError as e:

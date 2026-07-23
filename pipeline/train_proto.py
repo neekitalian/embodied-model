@@ -89,6 +89,7 @@ def main():
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--tau", type=float, default=1.0)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--init", help="warm-start from a pretrained encoder checkpoint (pretrain_aist.py)")
     ap.add_argument("--out", default="proto_encoder.pt")
     a = ap.parse_args()
     a.data, a.out = os.path.expanduser(a.data), os.path.expanduser(a.out)
@@ -104,6 +105,12 @@ def main():
           .replace("{g:len(v) for g,v in ...}", str({g: len(v) for g, v in data.items()})))
 
     enc = STGCNEncoder(embed_dim=a.embed_dim).to(device)
+    if a.init:
+        blob = torch.load(os.path.expanduser(a.init), map_location="cpu")
+        if blob.get("embed_dim", a.embed_dim) != a.embed_dim:
+            raise SystemExit(f"--embed-dim {a.embed_dim} != checkpoint's {blob['embed_dim']} (pass matching --embed-dim)")
+        enc.load_state_dict(blob["state_dict"])
+        print(f"[train_proto] warm-started from {a.init}")
     opt = optim.Adam(enc.parameters(), lr=a.lr)
     enc.train()
     for ep in range(1, a.epochs + 1):
