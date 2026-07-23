@@ -94,6 +94,7 @@
       <button id="loopBtn" disabled>Loop: on</button>
       <button id="spinBtn" disabled>Spin: off</button>
       <button id="dlBtn" disabled>⬇ JSON</button>
+      <label style="font-size:12px;color:var(--dim);white-space:nowrap">genre α <input type="range" id="alpha" min="0" max="0.9" step="0.05" value="0.45" style="width:80px;vertical-align:middle"></label>
       <input type="range" id="scrub" min="0" max="0" value="0" style="flex:1;min-width:120px" disabled>
     </div>
     <div id="note">No clip yet — record or upload one on the left.</div>
@@ -103,11 +104,12 @@
 
 <footer>
   Runs entirely in your browser (nothing is uploaded). Pose via MediaPipe Tasks Vision (CDN).
-  <b>First principle: protect the identity movement.</b> Each genre tile keeps your motion trajectory and adds genre
-  <b>character</b> (per-zone amplitude, silhouette, spread) and <b>rhythm</b> — your motion is time-warped onto that
-  genre's beat grid (tempo + swing) with beat-locked accents (hip-hop drop, jazz arm-hit, ballet phrasing). These are
-  heuristic previews; true genre <b>movement vocabulary</b> needs reference clips + a transfer model (Motion Puzzle /
-  zone-α), which runs in the local pipeline. “Original” is untouched; “⬇ JSON” exports it (HumanML3D-22, y-up).
+  <b>First principle: protect the identity movement.</b> When the AIST genre references are available, each tile runs
+  the <b>real per-zone transfer</b> (a browser port of <code>pipeline/genre_style.py</code>): content = your motion,
+  style = a genre reference clip, rhythm-aligned and blended per anatomical zone by the <b>α</b> slider (0 = you, 1 =
+  full genre). Root is protected; limbs carry the genre. If the references aren't loaded it falls back to heuristic
+  editions. Note the <b>α-trap</b>: high α smooths energy away — 0.3–0.5 reads best. “Original” is untouched;
+  “⬇ JSON” exports it (HumanML3D-22, y-up), which feeds <code>run_local.py</code>.
 </footer>
 
 <script type="module">
@@ -164,6 +166,68 @@ function mp33to22(lm){
   return j;
 }
 function toYupHip(j22){ const p=j22[H.pelvis]; return j22.map(q=>[q[0]-p[0], -(q[1]-p[1]), -(q[2]-p[2])]); }
+
+// ---------- REAL genre transfer (faithful port of pipeline/genre_style.py) ----------
+// content = visitor, style = an AIST reference clip fetched from /pipeline/refs/<genre>.json.
+const ZONES = { root:[0,3], spine:[6,9,12,15], left_arm:[13,16,18,20], right_arm:[14,17,19,21], left_leg:[1,4,7,10], right_leg:[2,5,8,11] };
+const REF_FILES = { "Jazz":"jazz", "Ballet":"ballet", "Hip-hop":"hip-hop" };
+const refs = {};                                   // genre name -> joints (T,22,3) once fetched
+async function loadRefs(){
+  for(const [name,file] of Object.entries(REF_FILES)){
+    try { const r=await fetch(`/pipeline/refs/${file}.json`,{cache:"no-store"});
+      if(r.ok){ const d=await r.json(); if(d && d.joints) refs[name]=d.joints; } } catch(e){}
+  }
+}
+function footPhase(clip){
+  const T=clip.length, sp=new Array(T).fill(0);
+  for(let t=1;t<T;t++){ const l=clip[t][10],l0=clip[t-1][10],r=clip[t][11],r0=clip[t-1][11];
+    sp[t]=Math.hypot(l[0]-l0[0],l[1]-l0[1],l[2]-l0[2])+Math.hypot(r[0]-r0[0],r[1]-r0[1],r[2]-r0[2]); }
+  sp[0]=sp[1]||0;
+  const c=[]; for(let t=1;t<T-1;t++) if(sp[t]<=sp[t-1]&&sp[t]<sp[t+1]) c.push(t);
+  const ph=new Array(T).fill(0);
+  if(c.length<2){ for(let t=0;t<T;t++) ph[t]=(t/T)%1; return ph; }
+  for(let i=0;i<c.length-1;i++){ const a=c[i],b=c[i+1]; for(let t=a;t<b;t++) ph[t]=(t-a)/(b-a); }
+  return ph;
+}
+function rhythmAlign(vis, ref){
+  const T=vis.length, vph=footPhase(vis), rph=footPhase(ref), xp0=vph[0], xp1=vph[T-1];
+  if(!(xp1>xp0)) return vis.map(f=>f.map(p=>p.slice()));    // degenerate phase -> no warp
+  const out=[];
+  for(let k=0;k<T;k++){ const xk=rph[0]+(rph[T-1]-rph[0])*k/(T-1);
+    let frac=(xk-xp0)/(xp1-xp0); frac=Math.max(0,Math.min(1,frac));
+    out.push(vis[Math.round(frac*(T-1))]); }
+  return out;
+}
+function zoneFeat(clip, js){
+  const T=clip.length; let vel=0;
+  for(let t=1;t<T;t++) for(const j of js){ const a=clip[t][j],b=clip[t-1][j]; vel+=Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]); }
+  vel/=Math.max(1,(T-1)*js.length);
+  let spread=0,vbias=0;
+  for(let t=0;t<T;t++){ let cx=0,cy=0,cz=0; for(const j of js){ cx+=clip[t][j][0]; cy+=clip[t][j][1]; cz+=clip[t][j][2]; }
+    cx/=js.length; cy/=js.length; cz/=js.length; let s=0,vb=0;
+    for(const j of js){ const p=clip[t][j]; s+=Math.hypot(p[0]-cx,p[1]-cy,p[2]-cz); vb+=p[1]-cy; }
+    spread+=s/js.length; vbias+=vb/js.length; }
+  return [vel, spread/T, vbias/T];
+}
+function oneEuro(clip, a){
+  const out=clip.map(f=>f.map(p=>p.slice()));
+  for(let t=1;t<clip.length;t++) for(let j=0;j<22;j++) for(let k=0;k<3;k++) out[t][j][k]=a*clip[t][j][k]+(1-a)*out[t-1][j][k];
+  return out;
+}
+function transfer(visitor, reference, alpha){   // uniform alpha across zones (matches run_local --alpha)
+  const T=Math.min(visitor.length, reference.length);
+  const vis=visitor.slice(0,T), ref=reference.slice(0,T), st=alpha;
+  const al=rhythmAlign(vis, ref);
+  let out=vis.map((f,t)=>f.map((p,j)=>[ st*al[t][j][0]+(1-st)*p[0], st*al[t][j][1]+(1-st)*p[1], st*al[t][j][2]+(1-st)*p[2] ]));
+  for(const z in ZONES){ const js=ZONES[z], vf=zoneFeat(vis,js), rf=zoneFeat(ref,js);
+    const s=(1-alpha)+alpha*Math.max(0.5,Math.min(2.0,(rf[1]+1e-6)/(vf[1]+1e-6)));
+    const vb=alpha*(rf[2]-vf[2])*0.5;
+    for(let t=0;t<T;t++){ let cx=0,cy=0,cz=0; for(const j of js){ cx+=out[t][j][0]; cy+=out[t][j][1]; cz+=out[t][j][2]; }
+      cx/=js.length; cy/=js.length; cz/=js.length;
+      for(const j of js){ out[t][j][0]=cx+(out[t][j][0]-cx)*s; out[t][j][1]=cy+(out[t][j][1]-cy)*s+vb; out[t][j][2]=cz+(out[t][j][2]-cz)*s; } } }
+  const sm=oneEuro(out,0.4);
+  return out.map((f,t)=>f.map((p,j)=>[ st*sm[t][j][0]+(1-st)*p[0], st*sm[t][j][1]+(1-st)*p[1], st*sm[t][j][2]+(1-st)*p[2] ]));
+}
 
 // ---------- identity-preserving edition: same trajectory, slight scale + frequency modulation ----------
 function meanPose(clip){ const T=clip.length, m=Array.from({length:22},()=>[0,0,0]);
@@ -246,7 +310,9 @@ const tiles = TILES.map(t=>{
 });
 
 let landmarker=null, camReady=false, recording=false, source="cam", replaying=false;
-let recFrames=[], recStart=0, recStopAt=0, fileURL=null, clip=null, clipFps=30;
+let recFrames=[], recStart=0, recStopAt=0, fileURL=null, clip=null, clipFps=30, styleAlpha=0.45;
+const alphaSlider=document.getElementById("alpha");
+alphaSlider.oninput=()=>{ styleAlpha=parseFloat(alphaSlider.value); rebuildTiles(); };
 
 // leave the uploaded-video replay mode and return the capture panel to the webcam
 function exitReplay(){
@@ -259,6 +325,7 @@ function exitReplay(){
 
 // ---------- init ----------
 async function init(){
+  loadRefs();                                       // fetch AIST genre references in the background
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:640, height:480 }, audio:false });
     video.srcObject = stream; await new Promise(r=>video.onloadedmetadata=r);
@@ -342,14 +409,28 @@ function finishUpload(){ if(source!=="file") return; recording=false; upvideo.on
 function finalizeClip(fps, truncated){
   clipFps=fps; clip=recFrames.slice();
   recMeta.textContent=`Captured ${clip.length} frames (~${clipFps} fps)`+(truncated?` — capped at ${MAX_FRAMES}`:"")+".";
-  for(const to of tiles){ to.clip = to.orig ? clip : edition(clip, to.g, clipFps); }
-  const sharedFit = computeFit(tiles.flatMap(to=>to.clip), tiles[0].w, tiles[0].h);  // one framing for all -> differences show
-  for(const to of tiles){ to.fit = sharedFit; }
-  note.innerHTML=`Original identity movement + 3 editions — your trajectory, warped to each genre's beat (tempo/swing) and re-shaped per genre (posture, spread, accents). Shared framing so the differences show.`;
+  rebuildTiles();
   scrub.max=clip.length-1; scrub.value=0; scrub.disabled=false;
   playBtn.disabled=false; loopBtn.disabled=false; spinBtn.disabled=false; dlBtn.disabled=false;
   frameIdx=0; playing=true; lastFrameT=performance.now(); playBtn.textContent="⏸ Pause";
   requestAnimationFrame(playLoop);
+}
+
+// build the 4 tiles: Original + genre transfer (if the AIST reference loaded) else heuristic edition
+function rebuildTiles(){
+  if(!clip) return;
+  let real=0;
+  for(const to of tiles){
+    if(to.orig){ to.clip=clip; continue; }
+    const ref=refs[to.name];
+    if(ref){ to.clip=transfer(clip, ref, styleAlpha); real++; }
+    else { to.clip=edition(clip, to.g, clipFps); }
+  }
+  const sharedFit=computeFit(tiles.flatMap(to=>to.clip), tiles[0].w, tiles[0].h);  // one framing so differences show
+  for(const to of tiles) to.fit=sharedFit;
+  note.innerHTML = real
+    ? `Original + genre transfer against AIST references · <b>α=${styleAlpha.toFixed(2)}</b> (0 = you, 1 = full genre). Identity protected; raising α strengthens the genre.`
+    : `Original + heuristic genre editions. Real transfer activates once <code>pipeline/refs/{jazz,ballet,hip-hop}.json</code> are pushed to the repo.`;
 }
 
 // ---------- render tiles ----------
