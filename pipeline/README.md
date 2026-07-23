@@ -14,6 +14,7 @@ end-to-end run happens locally (needs a webcam, your `semantic_spectrum`, and AI
 | `genre_style.py` | identity-preserving per-zone genre style transfer (rhythm-align + zone-α) | proxy runs, `test_genre_style.py` 7/7; 2 ADAPT points for the real encoder |
 | `video_to_reference.py` | dance video (AIST DB) -> HumanML3D-22 reference JSON (MediaPipe) | reuses stage12 |
 | `aist_to_reference.py` | AIST++ SMPL motion -> HumanML3D-22 reference JSON | scaffold, 1 ADAPT (SMPL forward) |
+| `run_local.py` | end-to-end: visitor + genre reference -> transfer -> VMC->Unity | `test_run_local.py` 6/6 |
 
 | `UNITY_SETUP.md` | Stage 3 / afternoon Unity receiver setup | notes |
 
@@ -46,6 +47,15 @@ python video_to_reference.py --video gJB_sBM_c01_d05_mJB0_ch01.mp4 --out ballet_
 python video_to_reference.py --glob "~/Downloads/aist/gLH_*.mp4" --out-dir refs/
 # then transfer the visitor's identity into that genre:
 python genre_style.py --visitor visitor_clip.json --reference ballet_ref.json --alpha 0.5 --out styled.npy
+```
+
+## One-command local run (capture -> genre -> Unity)
+```
+# style + preview:
+python run_local.py --visitor visitor_clip.json --genre ballet --refs-dir refs/ --alpha 0.5 --out styled.npy
+python view_clip.py styled.npy
+# style + stream live to Unity (EVMC4U on 39539):
+python run_local.py --visitor visitor_clip.json --genre hip-hop --refs-dir refs/ --stream --loop
 ```
 (Or just upload a genre video in the /portal page and download its JSON — same result, no code.)
 
