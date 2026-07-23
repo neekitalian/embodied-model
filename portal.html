@@ -231,6 +231,52 @@ function transfer(visitor, reference, alpha){   // uniform alpha across zones (m
   return out.map((f,t)=>f.map((p,j)=>[ st*sm[t][j][0]+(1-st)*p[0], st*sm[t][j][1]+(1-st)*p[1], st*sm[t][j][2]+(1-st)*p[2] ]));
 }
 
+// ---------- genre MOTIF matching: recognize where your motion resembles a genre, boost there ----------
+// A genre's "signature movements" = sliding windows of its AIST reference, each encoded as a per-zone
+// feature vector (velocity/spread/vertical-bias), unit-normalized so we match the SHAPE of the movement
+// (which zones lead, expansiveness ratios) independent of raw energy. We slide the same encoder over the
+// visitor, take the best cosine match per window -> a per-frame similarity curve. Expressiveness is then
+// gained where similarity is high (your body already leans that way), identity kept where it's low.
+function winZoneFeat(clip, a, b, js){
+  const T=b-a; let vel=0;
+  for(let t=a+1;t<b;t++) for(const j of js){ const p=clip[t][j],q=clip[t-1][j]; vel+=Math.hypot(p[0]-q[0],p[1]-q[1],p[2]-q[2]); }
+  vel/=Math.max(1,(T-1)*js.length);
+  let spread=0,vb=0;
+  for(let t=a;t<b;t++){ let cx=0,cy=0,cz=0; for(const j of js){cx+=clip[t][j][0];cy+=clip[t][j][1];cz+=clip[t][j][2];}
+    cx/=js.length;cy/=js.length;cz/=js.length; let s=0,v=0;
+    for(const j of js){const p=clip[t][j]; s+=Math.hypot(p[0]-cx,p[1]-cy,p[2]-cz); v+=p[1]-cy;} spread+=s/js.length; vb+=v/js.length; }
+  return [vel, spread/T, vb/T];
+}
+function sig(clip, a, b){
+  const v=[]; for(const js of Object.values(ZONES)) { const f=winZoneFeat(clip,a,b,js); v.push(f[0],f[1],f[2]); }
+  const n=Math.hypot(...v)||1; return v.map(x=>x/n);          // unit-normalized: match movement SHAPE, not energy
+}
+function motifBank(ref, win, stride){
+  const bank=[]; for(let a=0;a+win<=ref.length;a+=stride) bank.push(sig(ref,a,a+win));
+  if(!bank.length) bank.push(sig(ref,0,ref.length)); return bank;
+}
+function simCurve(visitor, ref, win=24, stride=12){
+  const bank=motifBank(ref,win,stride), T=visitor.length, centers=[], vals=[];
+  for(let a=0;a+win<=T;a+=stride){ const vs=sig(visitor,a,a+win); let m=0; for(const b of bank){ let d=0; for(let i=0;i<vs.length;i++) d+=vs[i]*b[i]; if(d>m)m=d; }
+    centers.push(a+win/2); vals.push(Math.max(0,m)); }
+  const curve=new Array(T).fill(0);
+  if(!centers.length){ const vs=sig(visitor,0,T); let m=0; for(const b of bank){ let d=0; for(let i=0;i<vs.length;i++) d+=vs[i]*b[i]; if(d>m)m=d; } curve.fill(Math.max(0,m)); }
+  else for(let t=0;t<T;t++){
+    if(t<=centers[0]) curve[t]=vals[0];
+    else if(t>=centers[centers.length-1]) curve[t]=vals[vals.length-1];
+    else { let k=1; while(k<centers.length && centers[k]<t) k++; const f=(t-centers[k-1])/(centers[k]-centers[k-1]); curve[t]=vals[k-1]+f*(vals[k]-vals[k-1]); }
+  }
+  for(let t=1;t<T;t++) curve[t]=0.3*curve[t]+0.7*curve[t-1];   // smooth
+  return { curve, mean: curve.reduce((x,y)=>x+y,0)/T };
+}
+// enhance: crossfade identity<->full-genre per frame, weight = alpha floor + gain*similarity
+function enhanceTransfer(visitor, ref, baseAlpha, gain, cap){
+  const styled=transfer(visitor, ref, cap), sc=simCurve(visitor, ref), T=visitor.length, out=[];
+  for(let t=0;t<T;t++){ const w=Math.max(0,Math.min(cap, baseAlpha+gain*sc.curve[t]));
+    out.push(visitor[t].map((p,j)=>[ (1-w)*p[0]+w*styled[t][j][0], (1-w)*p[1]+w*styled[t][j][1], (1-w)*p[2]+w*styled[t][j][2] ])); }
+  return { out, mean: sc.mean };
+}
+
 // ---------- identity-preserving edition: same trajectory, slight scale + frequency modulation ----------
 function meanPose(clip){ const T=clip.length, m=Array.from({length:22},()=>[0,0,0]);
   for(const f of clip) for(let j=0;j<22;j++){ m[j][0]+=f[j][0]; m[j][1]+=f[j][1]; m[j][2]+=f[j][2]; }
@@ -308,7 +354,7 @@ const tiles = TILES.map(t=>{
   const cap=document.createElement("div"); cap.className="tcap";
   cap.innerHTML=`${t.name}${t.sub?`<br><span class="tsub">${t.sub}</span>`:""}`;
   cell.appendChild(cv); cell.appendChild(cap); grid.appendChild(cell);
-  return { name:t.name, orig:!!t.orig, g:t.orig?null:t, ctx:cv.getContext("2d"), w:cv.width, h:cv.height, clip:null, fit:null };
+  return { name:t.name, orig:!!t.orig, g:t.orig?null:t, cell, cap, sim:null, ctx:cv.getContext("2d"), w:cv.width, h:cv.height, clip:null, fit:null };
 });
 
 let landmarker=null, camReady=false, recording=false, source="cam", replaying=false;
@@ -421,21 +467,37 @@ function finalizeClip(fps, truncated){
 // build the 4 tiles: Original + genre transfer (if the AIST reference loaded) else heuristic edition
 function rebuildTiles(){
   if(!clip) return;
-  let real=0;
+  let real=0, best=null, bestM=-1;
+  // pass 1: per-frame similarity of your motion to each available genre's motif bank
+  const sc={};
+  for(const to of tiles){ if(!to.orig && refs[to.name]) sc[to.name]=simCurve(clip, refs[to.name]); }
+  const means=Object.values(sc).map(s=>s.mean);
+  const mn=means.length?Math.min(...means):0, mx=means.length?Math.max(...means):1;
+  // pass 2: build tiles; the genre you most resemble gets the strongest expressiveness boost,
+  // applied per-frame where your motion resembles its signature moves. Identity kept elsewhere.
   for(const to of tiles){
-    if(to.orig){ to.clip=clip; continue; }
+    if(to.orig){ to.clip=clip; to.sim=null; continue; }
     const ref=refs[to.name];
-    // Visible genre CHARACTER (posture/silhouette/beat, from edition) layered on the reference-informed
-    // transfer (subtle, real). Together: clearly distinct genres, grounded in your AIST data.
-    const base = ref ? transfer(clip, ref, styleAlpha) : clip;
-    to.clip = edition(base, to.g, clipFps);
-    if(ref) real++;
+    if(!ref){ to.clip=edition(clip, to.g, clipFps); to.sim=null; continue; }
+    const s=sc[to.name], rel=(s.mean-mn)/((mx-mn)||1), gain=0.30+0.55*rel;
+    const styled=transfer(clip, ref, 0.9);
+    const out=clip.map((f,t)=>{ const w=Math.max(0,Math.min(0.9, styleAlpha+gain*s.curve[t]));
+      return f.map((p,j)=>[ (1-w)*p[0]+w*styled[t][j][0], (1-w)*p[1]+w*styled[t][j][1], (1-w)*p[2]+w*styled[t][j][2] ]); });
+    to.clip=edition(out, to.g, clipFps); to.sim=s.mean; real++;
+    if(s.mean>bestM){ bestM=s.mean; best=to.name; }
+  }
+  // captions: match % + allocation star for the closest genre
+  for(const to of tiles){
+    if(!to.cap) continue;
+    if(to.orig){ to.cap.innerHTML=`Original<br><span class="tsub">your identity movement</span>`; continue; }
+    const pct=to.sim!=null?Math.round(to.sim*100):null, star=(to.name===best&&real)?" ★":"";
+    to.cap.innerHTML=`${to.name}${star}<br><span class="tsub">${pct!=null?`match ${pct}%`:to.g.sub}</span>`;
   }
   const sharedFit=computeFit(tiles.flatMap(to=>to.clip), tiles[0].w, tiles[0].h);  // one framing so differences show
   for(const to of tiles) to.fit=sharedFit;
   note.innerHTML = real
-    ? `Original + genre editions, informed by your AIST references (<b>α=${styleAlpha.toFixed(2)}</b> underlay). Identity protected; genres differ in posture, spread and beat.`
-    : `Original + heuristic genre editions. AIST-referenced underlay activates once <code>pipeline/refs/{jazz,ballet,hip-hop}.json</code> load.`;
+    ? `Genre motifs matched to your motion: the genre you most resemble (<b>★</b>) gets the strongest boost, applied where you resemble its signature moves. Identity protected; <b>α=${styleAlpha.toFixed(2)}</b> is the floor.`
+    : `Original + heuristic genre editions. Motif matching activates once <code>pipeline/refs/{jazz,ballet,hip-hop}.json</code> load.`;
 }
 
 // ---------- render tiles ----------
