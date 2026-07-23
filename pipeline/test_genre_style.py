@@ -1,4 +1,4 @@
-"""Synthetic test for genre_style.transfer — shape, identity-preservation, and style change."""
+"""Synthetic test for genre_style.transfer - shape, identity-preservation, and style change."""
 import numpy as np
 from hml_skeleton import fk, q_from_two_vectors, PRIMARY_CHILD, PARENTS, T_POSE, IDX
 import genre_style as gs

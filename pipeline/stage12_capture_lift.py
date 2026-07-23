@@ -1,5 +1,5 @@
 """
-Stage 1 + 2 — Webcam capture -> MediaPipe BlazePose (world 3D) -> HumanML3D 22-joint skeleton.
+Stage 1 + 2 - Webcam capture -> MediaPipe BlazePose (world 3D) -> HumanML3D 22-joint skeleton.
 
 Drop this into momask-codes-main/ (e.g. as `pipeline/stage12_capture_lift.py`).
 It is deliberately self-contained: it does NOT import your semantic_spectrum modules,
@@ -29,7 +29,7 @@ IDX = {name: i for i, name in enumerate(H22)}
 
 
 class OneEuroFilter:
-    """Per-scalar 1€ filter — kills MediaPipe jitter without the lag of a moving average."""
+    """Per-scalar 1€ filter - kills MediaPipe jitter without the lag of a moving average."""
     def __init__(self, freq=30.0, min_cutoff=1.0, beta=0.007, d_cutoff=1.0):
         self.freq, self.min_cutoff, self.beta, self.d_cutoff = freq, min_cutoff, beta, d_cutoff
         self.x_prev = None
@@ -141,7 +141,7 @@ def capture(seconds=6.0, out="visitor_clip.npy", camera=0, show=True):
     euro = VectorEuro((22, 3), freq=fps, min_cutoff=1.0, beta=0.01)
 
     frames, n_target = [], int(seconds * fps)
-    print(f"[capture] recording ~{seconds}s at {fps:.0f} fps — 'q' to stop, 'c' to mark T-pose")
+    print(f"[capture] recording ~{seconds}s at {fps:.0f} fps - 'q' to stop, 'c' to mark T-pose")
     try:
         while len(frames) < n_target:
             ok, img = cap.read()
@@ -165,7 +165,7 @@ def capture(seconds=6.0, out="visitor_clip.npy", camera=0, show=True):
         pose.close()
 
     if not frames:
-        raise RuntimeError("No pose detected — check lighting / that a full body is in frame.")
+        raise RuntimeError("No pose detected - check lighting / that a full body is in frame.")
     seq = to_yup_hipcentered(np.stack(frames))  # (T,22,3)
     np.save(out, seq.astype(np.float32))
     print(f"[capture] saved {seq.shape} -> {out}")

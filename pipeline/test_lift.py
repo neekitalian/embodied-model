@@ -1,4 +1,4 @@
-"""Synthetic smoke test for stage12_capture_lift — no camera / mediapipe needed.
+"""Synthetic smoke test for stage12_capture_lift - no camera / mediapipe needed.
 Fakes MediaPipe world landmarks and checks the lift math is sane."""
 import numpy as np
 import stage12_capture_lift as S

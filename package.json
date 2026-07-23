@@ -1,11 +1,11 @@
 {
   "name": "embodied-model",
   "version": "1.0.0",
-  "description": "Unnoticed Dance — real-time identity-preservation motion installation: dashboard, tool graph, and pipeline scaffolds",
+  "description": "Unnoticed Dance - real-time identity-preservation motion installation: dashboard, tool graph, and pipeline scaffolds",
   "private": true,
   "scripts": {
     "dev": "python3 -m http.server 3000",
     "start": "python3 -m http.server 3000",
-    "build": "echo 'static site — no build step'"
+    "build": "echo 'static site - no build step'"
   }
 }

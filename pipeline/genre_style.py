@@ -1,12 +1,12 @@
 """
-Genre style transfer — the REAL version of what the browser previews.
+Genre style transfer - the REAL version of what the browser previews.
 
 Content = the visitor's motion (identity).  Style = a genre REFERENCE clip (AIST++ / Mixamo).
 Output = the visitor's movement re-expressed in the genre, with identity preserved.
 
 This is the local-pipeline counterpart to portal.html's heuristic editions. Unlike the browser
 (which can only reshape the visitor's own trajectory), this injects genre vocabulary + rhythm
-from actual reference motion — the only way to truly capture a genre.
+from actual reference motion - the only way to truly capture a genre.
 
 Design (mirrors Motion Puzzle / your zone-alpha):
   1. Rhythm-align the visitor to the genre reference's beat (foot-contact phase -> time-warp).
@@ -87,8 +87,8 @@ def zone_style_features(clip, joints):
 
 def transfer(visitor, reference, alpha=None):
     """Identity-preserving per-zone style transfer. visitor content + reference style -> styled clip.
-    The overall style strength (mean alpha) scales the WHOLE effect — rhythm, zone reshaping, and
-    smoothing — so alpha=0 returns the visitor untouched (identity), and alpha=1 is full genre."""
+    The overall style strength (mean alpha) scales the WHOLE effect - rhythm, zone reshaping, and
+    smoothing - so alpha=0 returns the visitor untouched (identity), and alpha=1 is full genre."""
     alpha = {**DEFAULT_ALPHA, **(alpha or {})}
     T = min(len(visitor), len(reference))
     visitor, reference = visitor[:T], reference[:T]
@@ -137,7 +137,7 @@ def main():
     styled = transfer(visitor, reference, alpha)
     np.save(a.out, styled.astype(np.float32))
     print(f"[genre_style] visitor {visitor.shape} + reference {reference.shape} -> {styled.shape} -> {a.out}")
-    print("Note: proxy transfer (real vocabulary needs your semantic_spectrum encoder — see ADAPT #1/#2).")
+    print("Note: proxy transfer (real vocabulary needs your semantic_spectrum encoder - see ADAPT #1/#2).")
 
 
 if __name__ == "__main__":

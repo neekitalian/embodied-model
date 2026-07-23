@@ -1,5 +1,5 @@
 """
-Stage 7 — stream a (T,22,3) HumanML3D joint clip to Unity over the VMC Protocol.
+Stage 7 - stream a (T,22,3) HumanML3D joint clip to Unity over the VMC Protocol.
 
 Python "Performer" -> UDP 127.0.0.1:39539 -> EVMC4U ExternalReceiver ("Marionette") -> VRM avatar.
 Bone rotations come from hml_skeleton (swing-only), converted to Unity's left-handed frame.
@@ -10,7 +10,7 @@ Usage: python stage7_vmc_sender.py blended_for_unity.npy --fps 30 --loop
 !!! COORDINATE CAVEAT: right-handed y-up (our data) -> Unity left-handed y-up requires a handedness
     flip. The flip below (negate z on position; (w,x,y,z)->(w,-x,-y,z) on rotation) is the standard
     z-flip, but the EXACT convention depends on how your capture axes ended up. I cannot verify this
-    against a live avatar from here — expect to tune `flip_pos` / `flip_quat` once you see the avatar
+    against a live avatar from here - expect to tune `flip_pos` / `flip_quat` once you see the avatar
     move (limbs mirrored -> flip x instead; whole body backwards -> also negate root z).
 """
 import argparse

@@ -79,7 +79,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Unnoticed Dance — Project Dashboard</h1>
+    <h1>Unnoticed Dance - Project Dashboard</h1>
     <div class="sub">Real-time identity-preservation motion installation · Tokyo gallery + humanoid-robotics SDK</div>
   </header>
 
@@ -108,7 +108,7 @@
       <h3>→ Only on your Mac (hardware / local files)</h3>
       <ul>
         <li>Webcam capture (MediaPipe needs a camera)</li>
-        <li>Run the blend — needs your <code>semantic_spectrum</code> + AIST++</li>
+        <li>Run the blend - needs your <code>semantic_spectrum</code> + AIST++</li>
         <li>Unity: import VRM, receive VMC, drive the avatar</li>
         <li>Verify VMC coordinate handedness against the live avatar</li>
       </ul>
@@ -123,7 +123,7 @@
   </table>
   </div>
 
-  <h2>Runbook — fastest path to a real "MVP works"</h2>
+  <h2>Runbook - fastest path to a real "MVP works"</h2>
   <div class="box">
     <ol class="run" id="runbook"></ol>
   </div>
@@ -137,7 +137,7 @@
 
   <footer>
     Deployed on Vercel · dashboard reflects session state as of last push · pipeline detail lives in
-    <a href="/dance-graph">/dance-graph</a>. This is a status surface, not the running app —
+    <a href="/dance-graph">/dance-graph</a>. This is a status surface, not the running app -
     the app runs locally · pipeline scaffolds in <code>/pipeline</code>.
   </footer>
 </div>
@@ -172,9 +172,9 @@ const FILES = [
 ];
 const RUN = [
   ['<code>pip install mediapipe opencv-python</code> → <code>python stage12_capture_lift.py --seconds 6</code>','mac'],
-  ['<code>python view_clip.py visitor_clip.npy</code> — confirm the capture is clean','mac'],
+  ['<code>python view_clip.py visitor_clip.npy</code> - confirm the capture is clean','mac'],
   ['Paste your <code>semantic_spectrum</code> APIs + the target-pipeline spec into the <b>local</b> Claude → fix the 3 ADAPT points → <code>python run_mvp.py</code>','mac'],
-  ['Unity per <code>UNITY_SETUP.md</code> — stream a <b>raw</b> clip first to isolate retargeting from blending','mac'],
+  ['Unity per <code>UNITY_SETUP.md</code> - stream a <b>raw</b> clip first to isolate retargeting from blending','mac'],
 ];
 
 const st = document.getElementById('stages');

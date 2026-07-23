@@ -2,7 +2,7 @@
 Shared HumanML3D-22 skeleton + joints<->rotations math.  numpy only.
 
 Used by view_clip.py (bones for drawing) and stage7_vmc_sender.py (bone rotations for VMC).
-Rotations are quaternions [w,x,y,z] throughout — NO Euler anywhere, to avoid rotation-order bugs.
+Rotations are quaternions [w,x,y,z] throughout - NO Euler anywhere, to avoid rotation-order bugs.
 The joints->rotations path is SWING-ONLY (no bone twist): each bone is oriented by a shortest-arc
 "look-at child" rotation. Good for an MVP avatar; loses forearm/upper-arm twist. FK round-trip
 below quantifies the (small) position error this introduces.
@@ -113,7 +113,7 @@ def joints_to_global_quats(seq, offsets):
     return gq
 
 def global_to_local(gq):
-    """Convert global orientations to parent-relative (local) — what BVH/VMC want."""
+    """Convert global orientations to parent-relative (local) - what BVH/VMC want."""
     T = gq.shape[0]
     lq = np.tile(np.array([1., 0, 0, 0]), (T, 22, 1))
     for t in range(T):

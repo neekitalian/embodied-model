@@ -5,7 +5,7 @@ Flow:  visitor webcam clip (Stage 1+2)  ->  pick a target dance clip whose body-
 match the visitor (Stage: genre match)  ->  your zone-alpha feature blend  ->  reconstructed
 joints saved as .npy for Unity (Stage 3).
 
-!!! ASSUMPTIONS — I could not read your repo from this session, so these calls are written to the
+!!! ASSUMPTIONS - I could not read your repo from this session, so these calls are written to the
     signatures you *described*. Verify against semantic_spectrum/ and scripts/run_zone_blend.py,
     and fix the three ADAPT markers below. Everything else is glue you can keep.
 """

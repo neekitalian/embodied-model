@@ -68,7 +68,7 @@ def main():
         os.makedirs(a.out_dir, exist_ok=True)
         hits = sorted(glob.glob(a.glob, recursive=True))
         if not hits:
-            raise SystemExit(f"no videos match {a.glob} — run: ls the folder to check the path/prefix")
+            raise SystemExit(f"no videos match {a.glob} - run: ls the folder to check the path/prefix")
         for v in hits:
             out = os.path.join(a.out_dir, os.path.splitext(os.path.basename(v))[0] + ".json")
             try: process(v, out, a.out_fps, a.seconds)

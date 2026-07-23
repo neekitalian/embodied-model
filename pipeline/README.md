@@ -1,6 +1,6 @@
 # Pipeline
 
-Stage 1–7 scaffolds for the installation. Each piece was unit-tested in isolation; the
+Stage 1-7 scaffolds for the installation. Each piece was unit-tested in isolation; the
 end-to-end run happens locally (needs a webcam, your `semantic_spectrum`, and AIST++).
 
 ## Files
@@ -57,7 +57,7 @@ python view_clip.py styled.npy
 # style + stream live to Unity (EVMC4U on 39539):
 python run_local.py --visitor visitor_clip.json --genre hip-hop --refs-dir refs/ --stream --loop
 ```
-(Or just upload a genre video in the /portal page and download its JSON — same result, no code.)
+(Or just upload a genre video in the /portal page and download its JSON - same result, no code.)
 
 ## Data contract
 `(T, 22, 3)` float32 · HumanML3D 22-joint order · y-up · pelvis(0) carries global position.

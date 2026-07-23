@@ -88,7 +88,7 @@
 
   <!-- ============ RENDER: original + 3 genre editions ============ -->
   <div class="card">
-    <h2>Render — original + genre editions</h2>
+    <h2>Render - original + genre editions</h2>
     <div class="row">
       <button class="primary" id="playBtn" disabled>▶ Play</button>
       <button id="loopBtn" disabled>Loop: on</button>
@@ -97,7 +97,7 @@
       <label style="font-size:12px;color:var(--dim);white-space:nowrap">genre α <input type="range" id="alpha" min="0" max="0.9" step="0.05" value="0.45" style="width:80px;vertical-align:middle"></label>
       <input type="range" id="scrub" min="0" max="0" value="0" style="flex:1;min-width:120px" disabled>
     </div>
-    <div id="note">No clip yet — record or upload one on the left.</div>
+    <div id="note">No clip yet - record or upload one on the left.</div>
     <div id="grid"></div>
   </div>
 </div>
@@ -108,7 +108,7 @@
   the <b>real per-zone transfer</b> (a browser port of <code>pipeline/genre_style.py</code>): content = your motion,
   style = a genre reference clip, rhythm-aligned and blended per anatomical zone by the <b>α</b> slider (0 = you, 1 =
   full genre). Root is protected; limbs carry the genre. If the references aren't loaded it falls back to heuristic
-  editions. Note the <b>α-trap</b>: high α smooths energy away — 0.3–0.5 reads best. “Original” is untouched;
+  editions. Note the <b>α-trap</b>: high α smooths energy away - 0.3-0.5 reads best. “Original” is untouched;
   “⬇ JSON” exports it (HumanML3D-22, y-up), which feeds <code>run_local.py</code>.
 </footer>
 
@@ -250,7 +250,7 @@ function beatWarp(T, fps, g){
 }
 function edition(clip, g, fps){
   const T=clip.length, m=meanPose(clip), bps=g.bpm/60, idx=beatWarp(T,fps,g);
-  // pass 1 — rhythm-warped source + per-zone spatial character + beat-locked accents
+  // pass 1 - rhythm-warped source + per-zone spatial character + beat-locked accents
   const S=[];
   for(let t=0;t<T;t++){
     const src=clip[idx[t]], beat=(t/fps)*bps;
@@ -270,7 +270,7 @@ function edition(clip, g, fps){
     }
     S.push(fr);
   }
-  // pass 2 — temporal character: EMA baseline + detail*sharp (ballet flows; jazz/hip-hop accent). Trajectory kept.
+  // pass 2 - temporal character: EMA baseline + detail*sharp (ballet flows; jazz/hip-hop accent). Trajectory kept.
   const out=[]; const ema=S[0].map(p=>p.slice());
   for(let t=0;t<T;t++){
     const fr=[];
@@ -330,23 +330,23 @@ async function init(){
     const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:640, height:480 }, audio:false });
     video.srcObject = stream; await new Promise(r=>video.onloadedmetadata=r);
     overlay.width=video.videoWidth; overlay.height=video.videoHeight; camReady=true; camdot.className="dot live";
-  } catch(e){ showBanner("Camera unavailable ("+e.message+") — you can still Upload a video below.","info"); }
+  } catch(e){ showBanner("Camera unavailable ("+e.message+") - you can still Upload a video below.","info"); }
   try {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
     landmarker = await PoseLandmarker.createFromOptions(vision, {
       baseOptions:{ modelAssetPath:"https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task", delegate:"GPU" },
       runningMode:"VIDEO", numPoses:1 });
-  } catch(e){ showBanner("Pose model failed to load: "+e.message+" — check network (CDN blocked?) and reload.","err"); recMeta.textContent="Model load failed."; return; }
+  } catch(e){ showBanner("Pose model failed to load: "+e.message+" - check network (CDN blocked?) and reload.","err"); recMeta.textContent="Model load failed."; return; }
   if (camReady) recBtn.disabled=false;
   videoFile.disabled=false; fileLabel.classList.remove("dis");
-  recMeta.textContent = camReady ? "Ready. Get your whole body in frame — Record, or Upload a video." : "Camera off — Upload a video to try it.";
+  recMeta.textContent = camReady ? "Ready. Get your whole body in frame - Record, or Upload a video." : "Camera off - Upload a video to try it.";
   requestAnimationFrame(loop);
 }
 
 // ---------- capture loop (webcam + uploaded video) ----------
 let lastT=-1;
 function loop(){
-  if(replaying){ requestAnimationFrame(loop); return; }   // uploaded clip is looping as a replay — skip detection
+  if(replaying){ requestAnimationFrame(loop); return; }   // uploaded clip is looping as a replay - skip detection
   const vid = source==="file"?upvideo:video;
   const ready = source==="file" ? (upvideo.readyState>=2 && !upvideo.paused && !upvideo.ended) : (camReady && video.readyState>=2);
   if (landmarker && ready && vid.currentTime!==lastT){
@@ -384,7 +384,7 @@ stopBtn.onclick=()=>{ source==="file"?finishUpload():stopRecording(); };
 function stopRecording(){ if(!recording) return; recording=false; recBtn.disabled=false; stopBtn.disabled=true; durSel.disabled=false;
   videoFile.disabled=false; fileLabel.classList.remove("dis"); finalizeClip(Math.max(1,Math.round(recFrames.length/((performance.now()-recStart)/1000)))); }
 videoFile.onchange=async(e)=>{ const f=e.target.files[0]; if(!f) return;
-  if(!landmarker){ showBanner("Pose model isn't ready yet — wait a moment and retry.","err"); return; }
+  if(!landmarker){ showBanner("Pose model isn't ready yet - wait a moment and retry.","err"); return; }
   exitReplay();
   if(fileURL) URL.revokeObjectURL(fileURL); fileURL=URL.createObjectURL(f);
   upvideo.src=fileURL; upvideo.loop=false; upvideo.currentTime=0; video.style.display="none"; upvideo.style.display="block";
@@ -399,7 +399,7 @@ function finishUpload(){ if(source!=="file") return; recording=false; upvideo.on
   if(recFrames.length<2){
     upvideo.pause(); upvideo.style.display="none"; video.style.display="block";
     overlay.width=video.videoWidth||640; overlay.height=video.videoHeight||480;
-    recMeta.textContent="No pose found in that video — try one with a full body visible."; return;
+    recMeta.textContent="No pose found in that video - try one with a full body visible."; return;
   }
   // success: keep the uploaded video replaying (looping) in the capture panel next to the transformed tiles
   replaying=true; upvideo.loop=true; upvideo.currentTime=0; upvideo.play().catch(()=>{});
@@ -408,7 +408,7 @@ function finishUpload(){ if(source!=="file") return; recording=false; upvideo.on
 // ---------- finalize: build the 4 tiles ----------
 function finalizeClip(fps, truncated){
   clipFps=fps; clip=recFrames.slice();
-  recMeta.textContent=`Captured ${clip.length} frames (~${clipFps} fps)`+(truncated?` — capped at ${MAX_FRAMES}`:"")+".";
+  recMeta.textContent=`Captured ${clip.length} frames (~${clipFps} fps)`+(truncated?` - capped at ${MAX_FRAMES}`:"")+".";
   rebuildTiles();
   scrub.max=clip.length-1; scrub.value=0; scrub.disabled=false;
   playBtn.disabled=false; loopBtn.disabled=false; spinBtn.disabled=false; dlBtn.disabled=false;

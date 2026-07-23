@@ -24,7 +24,7 @@ print(f"[setup] wrote synthetic_clip.npy {seq.shape}")
 r = subprocess.run([sys.executable, "view_clip.py", "synthetic_clip.npy", "--save", "preview.gif"],
                    capture_output=True, text=True)
 ok1 = os.path.exists("preview.gif") and os.path.getsize("preview.gif") > 1000
-print(f"[view_clip] {'PASS' if ok1 else 'FAIL'} — {r.stdout.strip()} {r.stderr.strip()[-200:]}")
+print(f"[view_clip] {'PASS' if ok1 else 'FAIL'} - {r.stdout.strip()} {r.stderr.strip()[-200:]}")
 
 # --- TEST 2: VMC sender emits well-formed OSC to a loopback server ---
 from pythonosc.dispatcher import Dispatcher
@@ -55,6 +55,6 @@ ok2 = (got["root"] == T and got["bone"] == T*22 and got["ok"] == T
        and len(got["bones"]) == exp_bones and got["argcount_ok"])
 print(f"[vmc] root={got['root']} bone={got['bone']} ok={got['ok']} "
       f"distinct_bones={len(got['bones'])} argcounts_ok={got['argcount_ok']}")
-print(f"[vmc] {'PASS' if ok2 else 'FAIL'} — {r2.stdout.strip()} {r2.stderr.strip()[-200:]}")
+print(f"[vmc] {'PASS' if ok2 else 'FAIL'} - {r2.stdout.strip()} {r2.stderr.strip()[-200:]}")
 
 print("\nRESULT:", "ALL PASS ✓" if (ok1 and ok2) else "SOME FAILED ✗")

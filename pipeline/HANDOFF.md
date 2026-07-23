@@ -1,34 +1,34 @@
-# Handoff prompt — run the Unnoticed Dance local pipeline
+# Handoff prompt - run the Unnoticed Dance local pipeline
 
 Paste the block below into a Claude Code / Cowork session **running on the Mac**, started inside
-`~/embodied-model/pipeline`. That session can see the files, the webcam, the AIST videos, and Unity —
+`~/embodied-model/pipeline`. That session can see the files, the webcam, the AIST videos, and Unity -
 things the cloud session cannot. Everything it needs is already in this repo and tested in isolation.
 
 ---
 
 You are working on my "Unnoticed Dance" installation, in `~/embodied-model/pipeline` on my Mac
 (macOS, zsh, conda `base`, Python 3.12). Deps are installed: mediapipe, opencv-python, numpy, python-osc.
-**First: `git pull` in `~/embodied-model` — it has recent fixes.**
+**First: `git pull` in `~/embodied-model` - it has recent fixes.**
 
 ## Goal
 Get the local end-to-end running: build genre **reference** clips from AIST videos, capture a **visitor**
 clip, then run `run_local.py` to produce an identity-preserving **genre-styled** motion, preview it, and
 (if Unity is set up) stream it to a VRM avatar over VMC. Then help me tune it.
 
-## What already exists here (all unit-tested; don't rewrite — reuse)
-- `video_to_reference.py` — dance video → HumanML3D-22 reference JSON (MediaPipe pose).
-- `genre_style.py` — identity-preserving per-zone genre transfer (content=visitor, style=reference).
+## What already exists here (all unit-tested; don't rewrite - reuse)
+- `video_to_reference.py` - dance video → HumanML3D-22 reference JSON (MediaPipe pose).
+- `genre_style.py` - identity-preserving per-zone genre transfer (content=visitor, style=reference).
   Two `ADAPT` points to later plug in my real `semantic_spectrum` encoder; a documented proxy runs now.
-- `run_local.py` — one command: visitor + genre reference → transfer → save/preview/stream (VMC 39539).
-- `view_clip.py` — 3D skeleton viewer. `stage12_capture_lift.py` — webcam → HumanML3D-22.
-- `stage7_vmc_sender.py` — joints → VMC → Unity. `hml_skeleton.py` — skeleton + rotation math.
+- `run_local.py` - one command: visitor + genre reference → transfer → save/preview/stream (VMC 39539).
+- `view_clip.py` - 3D skeleton viewer. `stage12_capture_lift.py` - webcam → HumanML3D-22.
+- `stage7_vmc_sender.py` - joints → VMC → Unity. `hml_skeleton.py` - skeleton + rotation math.
 - Tests: `python hml_skeleton.py`, `test_lift.py`, `test_genre_style.py`, `test_run_local.py` (all pass).
 
 ## Hard-won facts about my data / environment
 - AIST **videos** are in `~/Downloads/lite/` and `~/Downloads/dance_genre_estimation/` (flat, no subfolders).
   They are non-commercial → research/gallery track only; do not commit them to the repo.
 - Genres present include **`gJB`** (Ballet Jazz → *ballet*), **`gMH`** (Middle Hip-hop → *hip-hop*), plus
-  `gBR`, `gHO`, `gKR`. **`gJS` (Street Jazz → jazz) may be absent — check.**
+  `gBR`, `gHO`, `gKR`. **`gJS` (Street Jazz → jazz) may be absent - check.**
 - MediaPipe reads **one** body, so use **single-dancer, camera `c01`** clips (avoid `sGR` group clips with
   `d04_d05_d06`). Known-good single-dancer clips: `gJB_sFM_c01_d07_mJB3_ch04.mp4`,
   `gMH_sBM_c01_d24_mMH3_ch07.mp4`.
@@ -55,11 +55,11 @@ clip, then run `run_local.py` to produce an identity-preserving **genre-styled**
 
 ## Likely issues to watch for and fix
 - MediaPipe world-landmark axis orientation vs my y-up/hip-centered convention (check `view_clip` looks upright).
-- AIST reference vs visitor at different fps — `genre_style.rhythm_align` handles beat alignment; if timing looks
+- AIST reference vs visitor at different fps - `genre_style.rhythm_align` handles beat alignment; if timing looks
   off, check the foot-contact phase on noisy references.
-- A reference with a non-frontal camera gives a poor skeleton — swap to a `c01` single-dancer clip.
+- A reference with a non-frontal camera gives a poor skeleton - swap to a `c01` single-dancer clip.
 - The transfer is a geometric proxy until my `semantic_spectrum` encoder is wired at the two `ADAPT` points in
-  `genre_style.py`; don't expect deep vocabulary yet — expect rhythm + posture + expansiveness shifts.
+  `genre_style.py`; don't expect deep vocabulary yet - expect rhythm + posture + expansiveness shifts.
 
 ## Done when
 `refs/` has clean per-genre references, `run_local.py` produces a styled clip that is recognizably me but

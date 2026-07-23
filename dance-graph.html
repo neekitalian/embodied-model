@@ -86,22 +86,22 @@ const G = {
 };
 
 const NODES = [
-  { id: "root", label: "Unnoticed Dance", en: "Identity-preservation motion installation — Tokyo gallery + robotics SDK", group: "root", r: 30,
-    detail: "A visitor dances in front of a plain RGB webcam &rarr; 3D pose is extracted &rarr; their <b>identity signature</b> is blended onto a pre-recorded motion library &rarr; a stylized VRM avatar re-expresses &ldquo;you are still you.&rdquo; Solo-buildable, runs on a MacBook, ~5&ndash;10s budget per visitor (2D&rarr;3D lifters run at hundreds&ndash;thousands of FPS)." },
+  { id: "root", label: "Unnoticed Dance", en: "Identity-preservation motion installation - Tokyo gallery + robotics SDK", group: "root", r: 30,
+    detail: "A visitor dances in front of a plain RGB webcam &rarr; 3D pose is extracted &rarr; their <b>identity signature</b> is blended onto a pre-recorded motion library &rarr; a stylized VRM avatar re-expresses &ldquo;you are still you.&rdquo; Solo-buildable, runs on a MacBook, ~5-10s budget per visitor (2D&rarr;3D lifters run at hundreds-thousands of FPS)." },
 
   // ==== core IP ====
   { id: "ip", label: "Identity signature + zone α-blend", en: "the core IP", group: "ip", r: 22,
-    detail: "<b>Your IP; everything else is commodity.</b> Explicit identity embedding + zone-decomposed feature-space temporal α-blend: cheap (matrix ops), deterministic, per-zone controllable — guarantees a frame budget and avoids diffusion variance. Publishable at SIGGRAPH Asia / CHI / Ars Electronica, portable to the robotics SDK." },
+    detail: "<b>Your IP; everything else is commodity.</b> Explicit identity embedding + zone-decomposed feature-space temporal α-blend: cheap (matrix ops), deterministic, per-zone controllable - guarantees a frame budget and avoids diffusion variance. Publishable at SIGGRAPH Asia / CHI / Ars Electronica, portable to the robotics SDK." },
   { id: "transmomo", label: "TransMoMo", en: "CVPR 2020 · motion/structure/view disentangle", group: "tool", r: 13,
-    detail: "Unsupervised invariance losses disentangle <b>motion / structure / view</b> — the canonical template for a body-structure-invariant signature. 2D-video-centric, 2020 — conceptual scaffold, not drop-in. Code open." },
+    detail: "Unsupervised invariance losses disentangle <b>motion / structure / view</b> - the canonical template for a body-structure-invariant signature. 2D-video-centric, 2020 - conceptual scaffold, not drop-in. Code open." },
   { id: "idpres", label: "IDPres", en: "IEEE TIFS 2024 · skeleton identity augmentation", group: "tool", r: 13,
     detail: "Skeleton-based; explicitly folds in a target's <b>individualized motion + skeleton info</b> to strengthen identity. Published method, reimplement. Validate signature stability (does a few seconds yield a recognizable signature) with its evaluation." },
   { id: "puzzle", label: "Motion Puzzle", en: "ACM TOG 2022 · per-body-part style", group: "tool", r: 13,
-    detail: "<b>Per-body-part (zone)</b> style transfer, proving zone-wise style control preserves content — the closest reference to your zone-decomposition. Code available." },
+    detail: "<b>Per-body-part (zone)</b> style transfer, proving zone-wise style control preserves content - the closest reference to your zone-decomposition. Code available." },
 
   // ==== stage 1 capture ====
   { id: "s-cap", label: "① Capture", en: "Capture", group: "stage", r: 17,
-    detail: "Never the bottleneck. Control gallery lighting, fix the camera, lock exposure (MediaPipe degrades in low light / occlusion). Artistic re-expression needs no metric depth — monocular RGB suffices." },
+    detail: "Never the bottleneck. Control gallery lighting, fix the camera, lock exposure (MediaPipe degrades in low light / occlusion). Artistic re-expression needs no metric depth - monocular RGB suffices." },
   { id: "webcam", label: "RGB webcam", en: "1080p60 · primary", group: "tool", r: 12,
     detail: "A 1080p60 webcam, hardware only. Feeding BlazePose is enough for an artistic re-expression." },
   { id: "iphone", label: "iPhone 12 Pro+", en: "LightBuzz SDK · optional depth", group: "tool", r: 11,
@@ -109,11 +109,11 @@ const NODES = [
 
   // ==== stage 2 pose ====
   { id: "s-pose", label: "② Pose / 3D lifting", en: "Pose & 2D→3D Lifting", group: "stage", r: 17,
-    detail: "A two-stage pipeline is fastest and Mac-friendly. Lifters run <b>117&ndash;9341 FPS</b> (RTX 4080, Scientific Reports 2025) because they consume compact 2D keypoints, not images. Export ONNX; run inference in Python and stream joints." },
+    detail: "A two-stage pipeline is fastest and Mac-friendly. Lifters run <b>117-9341 FPS</b> (RTX 4080, Scientific Reports 2025) because they consume compact 2D keypoints, not images. Export ONNX; run inference in Python and stream joints." },
   { id: "mediapipe", label: "MediaPipe BlazePose", en: "GHUM Holistic · 2D+rough 3D", group: "tool", r: 12,
     detail: "Emits 3D keypoints in real time (~15 FPS mobile, far faster on desktop). Apache-2.0. Assumes front-facing capture; needs a one-time T-pose calibration." },
   { id: "agformer", label: "MotionAGFormer", en: "Apache-2.0 · productization pick", group: "tool", r: 12,
-    detail: "Matches MotionBERT accuracy at <b>~half the compute</b> — better for a MacBook; Apache-2.0 is the safer productization choice. Use S/XS or a causal window to protect latency." },
+    detail: "Matches MotionBERT accuracy at <b>~half the compute</b> - better for a MacBook; Apache-2.0 is the safer productization choice. Use S/XS or a causal window to protect latency." },
   { id: "motionbert", label: "MotionBERT", en: "research/CC-BY-NC · top accuracy", group: "tool", r: 12,
     detail: "Best-in-class accuracy (42.5M params, 174.7 GFLOPs) but heavier and <b>non-commercial</b> → limits the SDK track. Lite's 243-frame window adds buffering delay; measure end-to-end early." },
 
@@ -125,13 +125,13 @@ const NODES = [
   { id: "s-src", label: "④ Target motion library", en: "Target Motion Library", group: "stage", r: 17,
     detail: "No text prompt + hard latency budget → must be a <b>pre-recorded clip library</b>. Variety via curating dozens of clips selected on the visitor's own motion features, plus offline pre-baked stylized variants (MCM-LDM) so the live path only runs your fast α-blend." },
   { id: "mixamo", label: "Mixamo", en: "Adobe · commercial-safe · primary lib", group: "tool", r: 12,
-    detail: "Free, usable in commercial products (Adobe terms) — <b>the gallery AND SDK library</b>, and the bridge to the SDK." },
+    detail: "Free, usable in commercial products (Adobe terms) - <b>the gallery AND SDK library</b>, and the bridge to the SDK." },
   { id: "amass", label: "AMASS / HumanML3D", en: "non-commercial only · research track", group: "tool", r: 12,
-    detail: "License is <b>non-commercial</b> research/education/art only, and bars training methods for commercial use. A gallery piece may qualify as a &ldquo;non-commercial artistic project,&rdquo; but the SDK does not — keep it to the research/paper track." },
+    detail: "License is <b>non-commercial</b> research/education/art only, and bars training methods for commercial use. A gallery piece may qualify as a &ldquo;non-commercial artistic project,&rdquo; but the SDK does not - keep it to the research/paper track." },
   { id: "momask", label: "MoMask", en: "CVPR 2024 · text→motion · offline pre-bake", group: "tool", r: 12,
-    detail: "Masked modeling + residual VQ-VAE text-to-motion; the code base of your Phase 2 (Semantic Spectrum + zone blend). Needs a text prompt + diffusion-class compute → <b>offline only (RunPod A100) to pre-bake a stylized library, never the live 5&ndash;10s loop.</b> Trains on HumanML3D → inherits AMASS non-commercial → gallery/paper track." },
+    detail: "Masked modeling + residual VQ-VAE text-to-motion; the code base of your Phase 2 (Semantic Spectrum + zone blend). Needs a text prompt + diffusion-class compute → <b>offline only (RunPod A100) to pre-bake a stylized library, never the live 5-10s loop.</b> Trains on HumanML3D → inherits AMASS non-commercial → gallery/paper track." },
   { id: "aist", label: "AIST++", en: "dance dataset · SMPL · genre-labeled", group: "tool", r: 12,
-    detail: "Genre-labeled SMPL motion dataset — the library source and matching basis for &ldquo;dance genre matched to the body's characteristics.&rdquo; SMPL .pkl → export to HumanML3D 22 joints. Underlying AIST video DB is non-commercial → research/gallery track." },
+    detail: "Genre-labeled SMPL motion dataset - the library source and matching basis for &ldquo;dance genre matched to the body's characteristics.&rdquo; SMPL .pkl → export to HumanML3D 22 joints. Underlying AIST video DB is non-commercial → research/gallery track." },
 
   // ==== stage 5 blend ====
   { id: "s-blend", label: "⑤ Identity application / blend", en: "Identity Application / Blending", group: "stage", r: 17,
@@ -139,23 +139,23 @@ const NODES = [
   { id: "styleerd", label: "Style-ERD", en: "CVPR 2022 · online streaming baseline", group: "tool", r: 11,
     detail: "Encoder-Recurrent-Decoder, a proven <b>online/streaming</b> baseline that beats offline methods on runtime. Real-time fallback and comparison baseline." },
   { id: "diffusion", label: "MCM-LDM / LILAC", en: "offline pre-bake · v2 frontier", group: "tool", r: 11,
-    detail: "MCM-LDM (CVPR 2024) is the strongest offline arbitrary-style-transfer baseline; LILAC (2025) extends it to streaming via sliding windows. <b>Offline pre-bake only</b> — not the live path." },
+    detail: "MCM-LDM (CVPR 2024) is the strongest offline arbitrary-style-transfer baseline; LILAC (2025) extends it to streaming via sliding windows. <b>Offline pre-bake only</b> - not the live path." },
 
   // ==== stage 6 retarget ====
   { id: "s-retarget", label: "⑥ Retarget", en: "Retargeting", group: "stage", r: 17,
-    detail: "Unity Mecanim maps any Humanoid skeleton via normalized <b>Muscle Space</b> — proportion differences handled in real time, no extra deps. Gotchas: foot-skating (enable Foot IK), VRoid A-pose (enforce T-pose), verify shoulder/2-bone-spine, handle SMPL root translation separately." },
+    detail: "Unity Mecanim maps any Humanoid skeleton via normalized <b>Muscle Space</b> - proportion differences handled in real time, no extra deps. Gotchas: foot-skating (enable Foot IK), VRoid A-pose (enforce T-pose), verify shoulder/2-bone-spine, handle SMPL root translation separately." },
   { id: "mecanim", label: "Unity Mecanim", en: "built-in · muscle-space retarget", group: "tool", r: 12,
-    detail: "The same mechanism standard MediaPipe→Unity avatar repos rely on. Learned retargeting (ReConForM/MoReFlow) is v2 — mostly CUDA, not Apple Silicon." },
+    detail: "The same mechanism standard MediaPipe→Unity avatar repos rely on. Learned retargeting (ReConForM/MoReFlow) is v2 - mostly CUDA, not Apple Silicon." },
 
   // ==== stage 7 unity ====
   { id: "s-unity", label: "⑦ Unity integration / stream", en: "Streaming to Unity", group: "stage", r: 17,
     detail: "Keep Python (GPU inference) and Unity (render) as <b>separate processes</b>; the OSC/VMC bridge decouples them so you can swap the render machine (MacBook) independently of the GPU box (RunPod A100). Localhost UDP is sub-ms; latency is model-bound." },
   { id: "vmc", label: "VMC Protocol", en: "python-osc → EVMC4U + uOSC", group: "tool", r: 12,
-    detail: "OSC-based and open — write your own sender (no paid Virtual Motion Capture needed). Python sends HumanBodyBones data to UDP 39539 → EVMC4U ExternalReceiver applies it to the VRM. All MIT, pure C#, runs on macOS." },
+    detail: "OSC-based and open - write your own sender (no paid Virtual Motion Capture needed). Python sends HumanBodyBones data to UDP 39539 → EVMC4U ExternalReceiver applies it to the VRM. All MIT, pure C#, runs on macOS." },
 
   // ==== stage 8 avatar ====
   { id: "s-avatar", label: "⑧ Avatar", en: "Avatar & Aesthetics", group: "stage", r: 17,
-    detail: "Pick a <b>neutral-silhouette</b> avatar so motion carries identity — the thesis is &ldquo;you are still you,&rdquo; so don't let an exaggerated preset override the signature. Lock camera/lighting + post (bloom / subtle DOF / grade) for a gallery frame; consider split-screen (raw vs re-expressed)." },
+    detail: "Pick a <b>neutral-silhouette</b> avatar so motion carries identity - the thesis is &ldquo;you are still you,&rdquo; so don't let an exaggerated preset override the signature. Lock camera/lighting + post (bloom / subtle DOF / grade) for a gallery frame; consider split-screen (raw vs re-expressed)." },
   { id: "vroid", label: "VRoid → VRM", en: "free · Mecanim bones + ARKit", group: "tool", r: 12,
     detail: "VRoid Studio is free; VRM ships with Mecanim humanoid bones + ~52 ARKit blendshapes and intentional stylized characters (not skeletons, not photoreal). Imported via UniVRM (MIT)." },
   { id: "toon", label: "Unity Toon Shader", en: "official free · NPR cel shading", group: "tool", r: 11,
@@ -167,9 +167,9 @@ const NODES = [
   { id: "a-rpm", label: "Ready Player Me", en: "services down from 2026-01-31", group: "avoid", r: 12,
     detail: "Official forum notice: services unavailable from 2026-01-31 (after Netflix's 2025-12-19 acquisition). <b>Don't build the avatar layer on it.</b>" },
   { id: "a-wham", label: "WHAM live", en: "online ~9 FPS", group: "avoid", r: 11,
-    detail: "World-grounded SMPL; core net 200 FPS but ~9 FPS online with pre-processing (A100) — rules out the per-visitor gallery loop. Keep it for the world-grounded SDK/robotics track." },
+    detail: "World-grounded SMPL; core net 200 FPS but ~9 FPS online with pre-processing (A100) - rules out the per-visitor gallery loop. Keep it for the world-grounded SDK/robotics track." },
   { id: "a-livediff", label: "Diffusion live", en: "MCM-LDM/SMooDi/MotionDiffuse", group: "avoid", r: 11,
-    detail: "All offline arbitrary-style transfer, can't hit the 5&ndash;10s budget, unproven on a MacBook. <b>Don't promise live diffusion in the gallery</b> — offline pre-bake only." },
+    detail: "All offline arbitrary-style transfer, can't hit the 5-10s budget, unproven on a MacBook. <b>Don't promise live diffusion in the gallery</b> - offline pre-bake only." },
   { id: "a-barracuda", label: "Barracuda", en: "deprecated → use Sentis", group: "avoid", r: 10,
     detail: "Unity: Barracuda is replaced by Sentis (2.1.x). For in-engine inference use Sentis and validate throughput early, else prefer Python-side inference." },
 
@@ -177,7 +177,7 @@ const NODES = [
   { id: "t-gallery", label: "Gallery / paper track", en: "Gallery + Publication", group: "track", r: 16,
     detail: "May use Mixamo + AMASS/HumanML3D (as a &ldquo;non-commercial artistic project&rdquo;) + MotionBERT. Publish: SIGGRAPH Asia / CHI / Ars Electronica." },
   { id: "t-sdk", label: "SDK product track", en: "Robotics SDK Product", group: "track", r: 16,
-    detail: "Commercial → Mixamo + MotionAGFormer (Apache-2.0) only; no AMASS, no MotionBERT. Keep the two tracks clean — a real legal fork." },
+    detail: "Commercial → Mixamo + MotionAGFormer (Apache-2.0) only; no AMASS, no MotionBERT. Keep the two tracks clean - a real legal fork." },
 ];
 
 const EDGES = [

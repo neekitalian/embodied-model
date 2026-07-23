@@ -1,5 +1,5 @@
 """
-Eyeball a captured/blended clip as a 3D stick figure — BEFORE Unity exists.
+Eyeball a captured/blended clip as a 3D stick figure - BEFORE Unity exists.
 Position-based (no rotation math), so it shows exactly what's in the .npy.
 
 Deps:  pip install matplotlib numpy
