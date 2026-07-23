@@ -134,9 +134,9 @@ def motif_bank(ref, win=WIN, stride=STRIDE, salient=True, keep=0.5):
     return [bank[i] for i in keep_idx], stats
 
 
-def sim_curve(visitor, ref, win=WIN, stride=STRIDE):
-    """Per-frame similarity (0..1) of the visitor to the genre's motif bank, plus its mean."""
-    bank, stats = motif_bank(ref, win, stride)
+def curve_from_bank(visitor, bank, stats, win=WIN, stride=STRIDE):
+    """Per-frame similarity (0..1) of the visitor to a PRE-FIT motif bank, plus its mean.
+    Lets a caller fit a genre once (motif_bank) and reuse it -- see exhibition.GenreModel."""
     T = len(visitor)
     centers, vals = [], []
     last = max(1, T - win + 1)
@@ -151,6 +151,12 @@ def sim_curve(visitor, ref, win=WIN, stride=STRIDE):
     for t in range(1, T):                                    # smooth
         curve[t] = 0.3 * curve[t] + 0.7 * curve[t - 1]
     return curve, float(curve.mean())
+
+
+def sim_curve(visitor, ref, win=WIN, stride=STRIDE):
+    """Per-frame similarity (0..1) of the visitor to the genre's motif bank, plus its mean."""
+    bank, stats = motif_bank(ref, win, stride)
+    return curve_from_bank(visitor, bank, stats, win, stride)
 
 
 def enhance(visitor, ref, base_alpha=0.45, gain=0.6, cap=0.9):
