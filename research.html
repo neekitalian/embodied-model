@@ -99,6 +99,14 @@
       <p class="muted" style="margin-top:6px"><code>cd pipeline &amp;&amp; python make_stimuli.py --videos ~/Desktop/Videos</code></p>
       <div style="margin-top:10px"><button onclick="refreshReady()">Re-check readiness</button>
         <label style="margin-left:14px;font-size:13px"><input type="checkbox" id="cfg-reveal" onchange="saveCfg()"> reveal genre &amp; allocation level to participants</label></div>
+      <div style="margin-top:12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:13px">Survey design
+          <select id="cfg-design" onchange="saveCfg()" style="margin-left:8px">
+            <option value="full">Full matrix (48 stimuli / participant)</option>
+            <option value="balanced">Balanced subset (12 / participant, one level per action &times; genre)</option>
+          </select></label>
+        <span class="muted" id="design-note"></span>
+      </div>
     </div>
 
     <h2>Source actions</h2>
@@ -160,8 +168,14 @@ const LS = {
 };
 let MANIFEST=null, STIM=[], MODE="admin";
 
-function getCfg(){ try{ return JSON.parse(localStorage.getItem(LS.cfg))||{}; }catch(e){ return {}; } }
-function saveCfg(){ localStorage.setItem(LS.cfg, JSON.stringify({ reveal: document.getElementById("cfg-reveal").checked })); }
+function getCfg(){ try{ const c=JSON.parse(localStorage.getItem(LS.cfg))||{}; if(!c.design) c.design="full"; return c; }catch(e){ return {design:"full"}; } }
+function saveCfg(){ localStorage.setItem(LS.cfg, JSON.stringify({
+    reveal: document.getElementById("cfg-reveal").checked,
+    design: document.getElementById("cfg-design").value })); designNote(); }
+function designNote(){ const el=document.getElementById("design-note"); if(!el) return;
+  el.textContent = getCfg().design==="balanced"
+    ? `each participant sees 12 (one level per action x genre); the full 48 matrix is covered every ${(MANIFEST?.levels||[0,0,0,0]).length} participants.`
+    : `each participant sees all 48 stimuli.`; }
 function partIds(){ try{ return JSON.parse(localStorage.getItem(LS.parts))||[]; }catch(e){ return []; } }
 function getPart(id){ try{ return JSON.parse(localStorage.getItem(LS.P(id))); }catch(e){ return null; } }
 function savePart(p){ localStorage.setItem(LS.P(p.participant_id), JSON.stringify(p));
@@ -175,6 +189,7 @@ function shuffled(arr, seed){ const r=mulberry32(seed), a=arr.slice(); for(let i
 // ---------- init ----------
 async function init(){
   document.getElementById("cfg-reveal").checked = !!getCfg().reveal;
+  document.getElementById("cfg-design").value = getCfg().design || "full";
   try { const r=await fetch("/research/stimuli.json",{cache:"no-store"}); MANIFEST=await r.json(); STIM=MANIFEST.stimuli||[]; }
   catch(e){ STIM=[]; }
   document.getElementById("foot").innerHTML =
@@ -210,6 +225,7 @@ async function renderAdmin(){
      <td>${s.genre}</td><td>${s.allocation_level.toFixed(2)}</td>
      <td id="st-${s.stimulus_id}" class="muted">checking...</td></tr>`));
   renderGrid();
+  designNote();
   refreshReady();
 }
 function renderGrid(){
@@ -257,6 +273,7 @@ function screenIntro(sec){
       <h3>Consent &amp; introduction</h3>
       <p class="muted">You will watch short movement videos and rate how each one feels. There are no right or wrong answers.
       Ratings and short written responses are stored in this browser and exported by the researcher. You may stop at any time.</p>
+      <div class="muted" style="margin-top:8px">You will see ${ (getCfg().design==="balanced") ? ((MANIFEST?.actions||[]).length*(MANIFEST?.genres||[]).length) + " short videos" : (STIM.length + " short videos") }.</div>
       <label class="fld">Participant ID</label>
       <input type="text" id="pid" placeholder="e.g. p01" style="width:200px">
       <div style="margin-top:14px"><button class="primary" onclick="startParticipant()">I consent, begin</button></div>
@@ -265,12 +282,26 @@ function screenIntro(sec){
       `<div style="margin:6px 0"><button onclick="resumeParticipant('${p.participant_id}')">Resume ${p.participant_id}</button>
        <span class="muted" style="margin-left:8px">${p.idx||0} / ${(p.order||[]).length} done</span></div>`).join("")}</div>`:""}`;
 }
+// balanced design: one allocation level per (action x genre), the level rotated by `rot` so that within
+// a participant each level appears equally often, and across participants every cell is eventually covered.
+function balancedOrder(rot){
+  const acts=MANIFEST.actions||[], genres=MANIFEST.genres||[], levels=MANIFEST.levels||[];
+  const gid=g=> g==="hip-hop"?"hiphop":g, ids=[]; let pair=0;
+  acts.forEach(a=> genres.forEach(g=>{
+    const li=(pair+rot)%levels.length; ids.push(`${a.key}_${gid(g)}_${Math.round(levels[li]*100)}`); pair++; }));
+  return ids;
+}
+function nextRotation(){ const n=(MANIFEST.levels||[1]).length; let r=+(localStorage.getItem("ud_research_rotation")||"0");
+  localStorage.setItem("ud_research_rotation", String(r+1)); return r%n; }
 function startParticipant(){
   const id=(document.getElementById("pid").value||"").trim() || ("p"+Date.now().toString(36));
   const existing=getPart(id);
   if(existing && existing.background){ PART=existing; ORDER=PART.order; IDX=PART.idx||0; renderSurvey(); return; }
-  PART={ participant_id:id, timestamp_start:new Date().toISOString(), background:null,
-    order: shuffled(STIM.map(s=>s.stimulus_id), hash(id)), responses:{}, idx:0 };
+  const design=getCfg().design||"full";
+  const rot = design==="balanced" ? nextRotation() : null;
+  const base = design==="balanced" ? balancedOrder(rot) : STIM.map(s=>s.stimulus_id);
+  PART={ participant_id:id, timestamp_start:new Date().toISOString(), background:null, design, rotation:rot,
+    order: shuffled(base, hash(id)), responses:{}, idx:0 };
   ORDER=PART.order; IDX=0; savePart(PART); renderSurvey();
 }
 function resumeParticipant(id){ PART=getPart(id); ORDER=PART.order; IDX=PART.idx||0; renderSurvey(); }
