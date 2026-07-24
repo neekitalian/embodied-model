@@ -107,6 +107,13 @@
           </select></label>
         <span class="muted" id="design-note"></span>
       </div>
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">
+        <label style="font-size:13px;display:block;margin-bottom:4px">Central storage endpoint (Google Sheet Web App URL) &middot; optional</label>
+        <input type="text" id="cfg-endpoint" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%" onchange="saveCfg()">
+        <div style="margin-top:6px"><button onclick="testEndpoint()">Send test row</button>
+          <span class="muted" id="ep-status" style="margin-left:8px"></span></div>
+        <div class="muted" style="margin-top:6px">Responses always autosave to this browser. With a URL set, each response is also sent to your Google Sheet. Setup script is in <code>research/README.md</code>; for all devices, put the URL in <code>research/config.json</code> and commit.</div>
+      </div>
     </div>
 
     <h2>Source actions</h2>
@@ -137,27 +144,12 @@
 <script>
 // ---------- config ----------
 const RATINGS = [
-  ["dance_likeness","Dance-likeness","not a dance","clearly a dance"],
-  ["everyday_likeness","Everyday-likeness","not everyday","clearly everyday"],
-  ["genre_fit","Genre fit","does not fit","fits perfectly"],
-  ["perceived_transformation","Perceived transformation","unchanged","heavily transformed"],
-  ["naturalness","Naturalness","unnatural","natural"],
-  ["intentionality","Intentionality","random","deliberate"],
-  ["pleasantness","Pleasantness","unpleasant","pleasant"],
-  ["strangeness","Strangeness","ordinary","strange"],
-  ["expressiveness","Expressiveness","inexpressive","expressive"],
-  ["humanness","Humanness","not human","human"],
-  ["mechanicalness","Mechanicalness","organic","mechanical"],
-  ["emotional_engagement","Emotional engagement","detached","engaged"],
-  ["preserves_source_action","Preserves source action","lost","preserved"],
+  ["identity_preservation","Identity preservation","lost the person","clearly the same person"],
+  ["expressivity","Expressivity","inexpressive","highly expressive"],
+  ["genre_preference","Genre preference","dislike this version","like this version"],
 ];
 const QUALS = [
-  ["feeling","What feeling did this video give you?"],
-  ["feeling_part","Which part of the movement produced that feeling?"],
-  ["changed","What changed between the source action and the translated work?"],
-  ["remained","What remained recognisable from the everyday action?"],
-  ["person_machine_performance","Did the output feel closer to a person, a machine, or a performance?"],
-  ["why_genre","Why does it read as ballet, jazz, hip-hop, or none of these?"],
+  ["comment","Any comment? (optional)"],
 ];
 const RAW_COLS = ["participant_id","timestamp","stimulus_id","source_video_filename","action_label","action_type",
   "social_dimension","repetition_dimension","genre","allocation_level",
@@ -166,12 +158,21 @@ const RAW_COLS = ["participant_id","timestamp","stimulus_id","source_video_filen
 const LS = {
   cfg:"ud_research_config", parts:"ud_research_participants", P:id=>"ud_research_p_"+id,
 };
-let MANIFEST=null, STIM=[], MODE="admin";
+let MANIFEST=null, STIM=[], MODE="admin", CONFIG_FILE={};
+function getEndpoint(){ return ((getCfg().endpoint||"").trim()) || ((CONFIG_FILE.endpoint||"").trim()); }
+// fire-and-forget POST of one record to the Google Sheet web app (no-cors: request lands, response opaque)
+function pushRemote(obj){ const url=getEndpoint(); if(!url) return;
+  try{ fetch(url,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(obj)}); }catch(e){} }
+function testEndpoint(){ const el=document.getElementById("ep-status"), url=getEndpoint();
+  if(!url){ el.textContent="set a URL first"; return; }
+  pushRemote({__sheet:"_ping", ts:new Date().toISOString(), note:"test from research portal"});
+  el.textContent="sent - check your sheet's _ping tab"; }
 
 function getCfg(){ try{ const c=JSON.parse(localStorage.getItem(LS.cfg))||{}; if(!c.design) c.design="full"; return c; }catch(e){ return {design:"full"}; } }
 function saveCfg(){ localStorage.setItem(LS.cfg, JSON.stringify({
     reveal: document.getElementById("cfg-reveal").checked,
-    design: document.getElementById("cfg-design").value })); designNote(); }
+    design: document.getElementById("cfg-design").value,
+    endpoint: (document.getElementById("cfg-endpoint")||{}).value||"" })); designNote(); }
 function designNote(){ const el=document.getElementById("design-note"); if(!el) return;
   el.textContent = getCfg().design==="balanced"
     ? `each participant sees 12 (one level per action x genre); the full 48 matrix is covered every ${(MANIFEST?.levels||[0,0,0,0]).length} participants.`
@@ -192,6 +193,8 @@ async function init(){
   document.getElementById("cfg-design").value = getCfg().design || "full";
   try { const r=await fetch("/research/stimuli.json",{cache:"no-store"}); MANIFEST=await r.json(); STIM=MANIFEST.stimuli||[]; }
   catch(e){ STIM=[]; }
+  try { const rc=await fetch("/research/config.json",{cache:"no-store"}); CONFIG_FILE=await rc.json(); }catch(e){ CONFIG_FILE={}; }
+  const epEl=document.getElementById("cfg-endpoint"); if(epEl) epEl.value = getCfg().endpoint || CONFIG_FILE.endpoint || "";
   document.getElementById("foot").innerHTML =
     `48 stimuli = 4 actions &times; 3 genres &times; 4 allocation levels. Responses autosave to this browser after each stimulus; export CSV from Admin. Runs locally and on Vercel (static).`;
   const h=(location.hash||"").replace("#","");
@@ -326,7 +329,10 @@ function val(name){ const el=document.querySelector(`input[name="${name}"]:check
 function saveBackground(){
   const bg={ dance_experience:val("bg_dance"), generative_ai_familiarity:val("bg_ai"), movement_description_confidence:val("bg_conf") };
   if(!bg.dance_experience||!bg.generative_ai_familiarity||!bg.movement_description_confidence){ alert("Please answer all three."); return; }
-  PART.background=bg; savePart(PART); renderSurvey();
+  PART.background=bg; savePart(PART);
+  pushRemote({ __sheet:"participants", participant_id:PART.participant_id, timestamp:new Date().toISOString(),
+    design:PART.design, rotation:PART.rotation, ...bg });
+  renderSurvey();
 }
 
 function screenStimulus(sec){
@@ -386,6 +392,7 @@ function nextStim(){
   const {sid,row,missing}=collect();
   if(missing>0 && !confirm(`${missing} rating(s) left blank. Continue anyway?`)) return;
   PART.responses[sid]=row; IDX++; PART.idx=IDX; savePart(PART);
+  pushRemote({ __sheet:"responses", ...rawRow(PART.participant_id, sid, row) });
   window.scrollTo(0,0); renderSurvey();
 }
 function prevStim(){ persist(); if(IDX>0) IDX--; PART.idx=IDX; savePart(PART); window.scrollTo(0,0); renderSurvey(); }
@@ -403,18 +410,17 @@ function screenDone(sec){
 // ---------- CSV export ----------
 function esc(v){ v=(v==null?"":String(v)); return /[",\n]/.test(v)? '"'+v.replace(/"/g,'""')+'"' : v; }
 function stimMeta(sid){ return STIM.find(s=>s.stimulus_id===sid)||{}; }
+function rawRow(pid, sid, r){ const s=stimMeta(sid);
+  return { participant_id:pid, timestamp:r.timestamp, stimulus_id:sid,
+    source_video_filename:s.source_video_filename, action_label:s.action_label, action_type:s.action_type,
+    social_dimension:s.social_dimension, repetition_dimension:s.repetition_dimension,
+    genre:s.genre, allocation_level:s.allocation_level,
+    ...Object.fromEntries(RATINGS.map(x=>[x[0], r[x[0]]])),
+    ...Object.fromEntries(QUALS.map(x=>[x[0], r[x[0]]])) }; }
 function allRows(){
   const rows=[];
   partIds().map(getPart).filter(Boolean).forEach(p=>{
-    Object.entries(p.responses||{}).forEach(([sid,r])=>{
-      const s=stimMeta(sid);
-      rows.push({ participant_id:p.participant_id, timestamp:r.timestamp, stimulus_id:sid,
-        source_video_filename:s.source_video_filename, action_label:s.action_label, action_type:s.action_type,
-        social_dimension:s.social_dimension, repetition_dimension:s.repetition_dimension,
-        genre:s.genre, allocation_level:s.allocation_level,
-        ...Object.fromEntries(RATINGS.map(x=>[x[0], r[x[0]]])),
-        ...Object.fromEntries(QUALS.map(x=>[x[0], r[x[0]]])) });
-    });
+    Object.entries(p.responses||{}).forEach(([sid,r])=> rows.push(rawRow(p.participant_id, sid, r)));
   });
   return rows;
 }

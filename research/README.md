@@ -31,6 +31,45 @@ Then commit `research/sources`, `research/stimuli`, and `research/stimuli.json` 
 
 ## Data
 
-Participant responses autosave to the browser's localStorage and are exported as CSV from the Admin tab
-(raw = one row per participant x stimulus; summary = grouped by action x genre x allocation level).
-There is no server; nothing is uploaded.
+Participant responses always autosave to the browser's localStorage and can be exported as CSV from the
+Admin tab (raw = one row per participant x stimulus; summary = grouped by action x genre x allocation
+level). Each stimulus collects 3 ratings (identity_preservation, expressivity, genre_preference) plus one
+optional comment.
+
+## Central storage (Google Sheet) - optional
+
+To collect all participants centrally (across devices), each response can also be POSTed to a Google Sheet.
+
+1. Create a Google Sheet.
+2. Extensions -> Apps Script. Replace the code with the script below and Save.
+3. Deploy -> New deployment -> type "Web app" -> Execute as: Me -> Who has access: Anyone -> Deploy.
+   Copy the Web app URL (ends with `/exec`).
+4. Put that URL in `config.json` (`{"endpoint": "https://script.google.com/macros/s/.../exec"}`) and
+   commit, so every device uses it. (Or paste it in the Admin tab for just this browser.)
+
+Responses land in a `responses` tab (one row each, matching the raw CSV columns), participant background
+in a `participants` tab, and the "Send test row" button writes to a `_ping` tab.
+
+```javascript
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var name = data.__sheet || "responses";
+    delete data.__sheet;
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sh = ss.getSheetByName(name) || ss.insertSheet(name);
+    var keys = Object.keys(data);
+    if (sh.getLastRow() === 0) sh.appendRow(keys);
+    var header = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    keys.forEach(function (k) {
+      if (header.indexOf(k) < 0) { header.push(k); sh.getRange(1, header.length).setValue(k); }
+    });
+    sh.appendRow(header.map(function (k) { return data[k] !== undefined ? data[k] : ""; }));
+    return ContentService.createTextOutput(JSON.stringify({ ok: true }));
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) }));
+  }
+}
+```
+
+There is no other server; without an endpoint set, nothing is uploaded.
