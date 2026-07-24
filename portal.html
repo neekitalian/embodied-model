@@ -6,114 +6,117 @@
 <title>Unnoticed Dance · Record &amp; Render Portal</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root { --bg:#0f0f14; --panel:#16161e; --line:#262631; --ink:#e8e8ee; --dim:#9a9ba6;
-    --blue:#5fa9d8; --green:#6ad07f; --gold:#ffd24d; --red:#e07a7a; }
-  body { background:var(--bg); color:var(--ink); font-family:-apple-system,"Segoe UI",sans-serif;
-    min-height:100vh; padding:20px; }
-  a { color:var(--blue); text-decoration:none; } a:hover{ text-decoration:underline; }
-  header { max-width:1150px; margin:0 auto 14px; }
-  h1 { font-size:20px; } .sub { color:var(--dim); font-size:13px; margin-top:3px; }
+  :root { color-scheme:dark; --bg:#060610; --line:rgba(255,255,255,.14); --ink:#f7f7ff; --dim:rgba(247,247,255,.66);
+    --accent:#5cd6ff; --blue:#5fa9d8; --green:#6ad07f; --red:#e07a7a; --view:#05050d; }
+  html, body { height:100%; }
+  body { background:var(--bg); color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; overflow:hidden; }
+  a { color:var(--accent); text-decoration:none; } a:hover{ text-decoration:underline; }
 
-  #banner { max-width:1150px; margin:0 auto 14px; padding:11px 15px; border-radius:10px; font-size:13px; display:none; }
-  #banner.err { display:block; background:#2a1618; border:1px solid #5a2f2f; color:#f0b8b8; }
-  #banner.info { display:block; background:#161d22; border:1px solid #24404e; color:#a9d4e6; }
+  #app { display:flex; width:100%; height:100vh; }
+  .sidebar { flex:0 0 340px; width:340px; max-width:100vw; height:100%; overflow-y:auto; padding:20px; border-right:1px solid var(--line); }
+  .sidebar::-webkit-scrollbar { width:6px; } .sidebar::-webkit-scrollbar-thumb { background:rgba(255,255,255,.22); border-radius:999px; }
+  .stage { flex:1 1 auto; height:100%; overflow-y:auto; padding:18px; }
+  .sidebar h1 { font-size:1.5rem; line-height:1.05; letter-spacing:-.01em; margin-bottom:6px; }
+  .desc { font-size:.8rem; color:var(--dim); line-height:1.4; }
+  .nav { font-size:.72rem; margin:12px 0 4px; display:flex; gap:12px; flex-wrap:wrap; }
 
-  .cols { max-width:1150px; margin:0 auto; display:grid; grid-template-columns:360px 1fr; gap:16px; align-items:start; }
-  @media (max-width:860px){ .cols{ grid-template-columns:1fr; } }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
-  .card h2 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin-bottom:12px; }
-
-  .stage { position:relative; width:100%; aspect-ratio:4/3; background:#000; border-radius:10px; overflow:hidden; }
-  video, #upvideo, canvas.overlay { position:absolute; inset:0; width:100%; height:100%; }
+  .preview { position:relative; width:100%; aspect-ratio:4/3; background:#000; border-radius:12px; overflow:hidden; border:1px solid var(--line); margin-top:14px; }
+  #video, #upvideo, canvas.overlay { position:absolute; inset:0; width:100%; height:100%; }
   #video { object-fit:cover; transform:scaleX(-1); }
   #upvideo { object-fit:contain; background:#000; transform:none; }
 
-  .row { display:flex; gap:9px; align-items:center; flex-wrap:wrap; margin-top:13px; }
-  button, .filebtn { background:#1e1e28; color:var(--ink); border:1px solid var(--line); border-radius:9px;
-    padding:9px 15px; font-size:13.5px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
-  button:hover:not(:disabled), .filebtn:hover:not(.dis){ border-color:var(--blue); }
-  button:disabled { opacity:.4; cursor:not-allowed; }
-  .filebtn.dis { opacity:.4; cursor:not-allowed; }
-  button.primary { background:var(--green); color:#0f0f14; border-color:var(--green); font-weight:600; }
-  button.rec { background:var(--red); color:#0f0f14; border-color:var(--red); font-weight:600; }
-  select, input[type=range] { accent-color:var(--blue); }
-  select { background:#1e1e28; color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:7px 9px; font-size:13px; }
-  .meta { font-size:12px; color:var(--dim); margin-top:9px; min-height:16px; }
-  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#555; margin-right:6px; vertical-align:middle; }
+  .grp { border-top:1px solid var(--line); padding-top:14px; margin-top:16px; }
+  .glab { display:flex; align-items:center; font-size:.7rem; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin-bottom:11px; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:9px; }
+  button, .filebtn { background:rgba(255,255,255,.13); color:#fff; border:none; border-radius:999px; padding:8px 14px;
+    font-size:.82rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px; backdrop-filter:blur(12px);
+    transition:background .12s ease, transform .12s ease; }
+  button:hover:not(:disabled), .filebtn:hover:not(.dis){ background:rgba(255,255,255,.2); transform:translateY(-1px); }
+  button:disabled { opacity:.42; cursor:not-allowed; }
+  .filebtn.dis { opacity:.42; cursor:not-allowed; }
+  button.primary { background:rgba(92,214,255,.28); } button.primary:hover:not(:disabled){ background:rgba(92,214,255,.42); }
+  button.rec { background:rgba(224,122,122,.32); }
+  select { background:rgba(255,255,255,.13); color:#fff; border:none; border-radius:999px; padding:7px 11px; font-size:.8rem; }
+  input[type=range] { accent-color:var(--accent); width:100%; }
+  .mini { font-size:.76rem; color:var(--dim); display:inline-flex; align-items:center; gap:6px; }
+  .slab { display:block; font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); margin:12px 0 5px; }
+  .meta { font-size:.74rem; color:var(--dim); margin-top:8px; min-height:15px; }
+  #note { font-size:.74rem; color:var(--dim); margin-top:11px; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#555; margin-right:7px; }
   .dot.live { background:var(--green); } .dot.rec { background:var(--red); animation:pulse 1s infinite; }
   @keyframes pulse { 50%{ opacity:.3; } }
 
-  #note { font-size:12.5px; color:var(--dim); margin-top:6px; }
-  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:11px; margin-top:12px; }
-  .tile { background:#0b0b10; border:1px solid var(--line); border-radius:10px; padding:7px; }
-  .tile canvas { width:100%; height:auto; display:block; border-radius:6px; }
-  .tcap { font-size:12px; color:var(--dim); text-align:center; margin-top:6px; }
-  .tsub { font-size:10px; color:#6a6a75; }
-  .tile.orig { border-color:#3a4a5a; } .tile.orig .tcap { color:var(--blue); font-weight:600; }
-  footer { max-width:1150px; margin:18px auto 0; color:#55565f; font-size:11.5px; }
+  #banner { position:fixed; top:12px; left:50%; transform:translateX(-50%); z-index:60; padding:10px 16px; border-radius:10px; font-size:13px; display:none; max-width:80vw; }
+  #banner.err { display:block; background:#2a1618; border:1px solid #5a2f2f; color:#f0b8b8; }
+  #banner.info { display:block; background:#161d22; border:1px solid #24404e; color:#a9d4e6; }
+
+  #grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(340px,1fr)); gap:14px; }
+  .tile { background:var(--view); border:1px solid var(--line); border-radius:14px; padding:11px; }
+  .tile canvas { width:100%; height:auto; display:block; border-radius:9px; }
+  .tcap { font-size:.84rem; color:var(--dim); margin:0 0 9px; padding:0 2px; }
+  .tsub { font-size:.68rem; color:rgba(247,247,255,.42); }
+  .tile.orig { border-color:rgba(92,214,255,.4); } .tile.orig .tcap { color:var(--accent); font-weight:650; }
+  .stage-empty { color:var(--dim); font-size:.9rem; padding:40px 8px; }
 </style>
 </head>
 <body>
-<header>
-  <h1>Record &amp; Render Portal</h1>
-  <div class="sub">Record on webcam <em>or upload a video</em> → your identity movement, rendered as the original plus slight genre editions. Browser MVP of the installation. · <a href="/">dashboard</a> · <a href="/research">research portal</a> · <a href="/dance-graph">tool graph</a></div>
-</header>
-
 <div id="banner"></div>
 
-<div class="cols">
-  <!-- ============ CAPTURE ============ -->
-  <div class="card">
-    <h2><span class="dot" id="camdot"></span>Capture</h2>
-    <div class="stage">
+<div id="app">
+  <aside class="sidebar">
+    <h1>Unnoticed Dance</h1>
+    <p class="desc">Record on webcam or upload a video. Your identity movement is replayed as the original plus slight genre editions, shown on every screen at once.</p>
+    <div class="nav"><a href="/">dashboard</a><a href="/research">research</a><a href="/dance-graph">tool graph</a></div>
+
+    <div class="preview">
       <video id="video" autoplay playsinline muted></video>
       <video id="upvideo" playsinline muted style="display:none"></video>
       <canvas class="overlay" id="overlay"></canvas>
     </div>
-    <div class="row">
-      <button class="rec" id="recBtn" disabled>● Record</button>
-      <label style="font-size:13px;color:var(--dim)">for
-        <select id="dur"><option value="4">4s</option><option value="6">6s</option><option value="10">10s</option><option value="30" selected>30s</option><option value="45">45s</option><option value="60">60s</option></select>
-      </label>
-      <button id="stopBtn" disabled>Stop</button>
-    </div>
-    <div class="row">
-      <label class="filebtn dis" id="fileLabel">⬆ Upload a video
-        <input type="file" accept="video/*" id="videoFile" hidden disabled>
-      </label>
-      <span style="font-size:12px;color:var(--dim)">or drop in a clip</span>
-    </div>
-    <div class="meta" id="recMeta">Initializing camera &amp; pose model…</div>
-  </div>
 
-  <!-- ============ RENDER: original + 3 genre editions ============ -->
-  <div class="card">
-    <h2>Render - original + genre editions</h2>
-    <div class="row">
-      <button class="primary" id="playBtn" disabled>▶ Play</button>
-      <button id="loopBtn" disabled>Loop: on</button>
-      <button id="spinBtn" disabled>Spin: off</button>
-      <button id="dlBtn" disabled>⬇ JSON</button>
-      <button id="vidBtn" disabled>⬇ Video</button>
-      <label style="font-size:12px;color:var(--dim);white-space:nowrap">genre α <input type="range" id="alpha" min="0" max="0.9" step="0.05" value="0.45" style="width:80px;vertical-align:middle"></label>
-      <input type="range" id="scrub" min="0" max="0" value="0" style="flex:1;min-width:120px" disabled>
+    <div class="grp">
+      <span class="glab"><span class="dot" id="camdot"></span>Capture</span>
+      <div class="row">
+        <button class="rec" id="recBtn" disabled>● Record</button>
+        <label class="mini">for
+          <select id="dur"><option value="4">4s</option><option value="6">6s</option><option value="10">10s</option><option value="30" selected>30s</option><option value="45">45s</option><option value="60">60s</option></select>
+        </label>
+        <button id="stopBtn" disabled>Stop</button>
+      </div>
+      <div class="row">
+        <label class="filebtn dis" id="fileLabel">⬆ Upload a video<input type="file" accept="video/*" id="videoFile" hidden disabled></label>
+      </div>
+      <div class="meta" id="recMeta">Initializing camera &amp; pose model…</div>
     </div>
-    <div id="note">No clip yet - record or upload one on the left.</div>
+
+    <div class="grp">
+      <span class="glab">Playback &amp; timeline</span>
+      <div class="row">
+        <button class="primary" id="playBtn" disabled>▶ Play</button>
+        <button id="loopBtn" disabled>Loop: on</button>
+        <button id="spinBtn" disabled>Spin: off</button>
+      </div>
+      <div class="row">
+        <button id="dlBtn" disabled>⬇ JSON</button>
+        <button id="vidBtn" disabled>⬇ Video</button>
+      </div>
+      <label class="slab">Genre intensity &alpha;</label>
+      <input type="range" id="alpha" min="0" max="0.9" step="0.05" value="0.45">
+      <label class="slab">Timeline (drives every screen)</label>
+      <input type="range" id="scrub" min="0" max="0" value="0" disabled>
+      <div id="note">No clip yet - record or upload one above.</div>
+    </div>
+
+    <div class="grp">
+      <span class="glab">About</span>
+      <p class="desc">Runs entirely in your browser (nothing is uploaded); pose via MediaPipe. Every screen protects your identity movement - your root (locomotion) stays yours while the limbs carry real grafted genre motion, gated by &alpha;. &ldquo;Original&rdquo; is untouched; &ldquo;&#8595; JSON&rdquo; exports it as HumanML3D-22.</p>
+    </div>
+  </aside>
+
+  <main class="stage">
     <div id="grid"></div>
-  </div>
+  </main>
 </div>
-
-<footer>
-  Runs entirely in your browser (nothing is uploaded). Pose via MediaPipe Tasks Vision (CDN).
-  <b>First principle: protect the identity movement.</b> When the trained model is deployed, a prototypical ST-GCN
-  encoder (AIST-pretrained) runs in your browser and decides <b>which genre your body dances</b>. Each tile then does a
-  <b>motif graft</b> (a browser port of <code>pipeline/genre_graft.py</code>): your motion is DTW-aligned to the genre
-  reference, and where you resemble it the tile splices in the reference's <b>real genre movement</b> - the actual
-  extension or bounce the reference dancer performed, not a reshaping of your own motion. Your <b>root stays yours</b>
-  (locomotion, identity of place); the limbs carry the genre, gated by similarity with the <b>α</b> slider as the floor.
-  If the model or references aren't loaded it falls back to Laban matching, then to heuristic editions. “Original” is
-  untouched; “⬇ JSON” exports it (HumanML3D-22, y-up), which feeds the pipeline.
-</footer>
 
 <script type="module">
 import { FilesetResolver, PoseLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -552,10 +555,10 @@ const videoFile=document.getElementById("videoFile"), fileLabel=document.getElem
 const TILES=[{name:"Original",sub:"your identity movement",orig:true}].concat(GENRES);
 const tiles = TILES.map(t=>{
   const cell=document.createElement("div"); cell.className="tile"+(t.orig?" orig":"");
-  const cv=document.createElement("canvas"); cv.width=260; cv.height=240;
+  const cv=document.createElement("canvas"); cv.width=440; cv.height=340;
   const cap=document.createElement("div"); cap.className="tcap";
-  cap.innerHTML=`${t.name}${t.sub?`<br><span class="tsub">${t.sub}</span>`:""}`;
-  cell.appendChild(cv); cell.appendChild(cap); grid.appendChild(cell);
+  cap.innerHTML=`${t.name}${t.sub?` <span class="tsub">&middot; ${t.sub}</span>`:""}`;
+  cell.appendChild(cap); cell.appendChild(cv); grid.appendChild(cell);
   return { name:t.name, orig:!!t.orig, g:t.orig?null:t, cell, cap, sim:null, ctx:cv.getContext("2d"), w:cv.width, h:cv.height, clip:null, fit:null };
 });
 
