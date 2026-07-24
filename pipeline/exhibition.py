@@ -88,14 +88,21 @@ def unnoticed_dance(visitor, references, base_alpha=0.45, gain=0.6, cap=0.9, mod
     allocation = {g: scores[g] / total for g in scores}      # 3. ALLOCATE (which genre the body dances)
     genre = max(scores, key=scores.get)
 
-    if graft:                                                # 4. EDIT: graft real genre motion, gated by similarity
+    if graft == "mix":                                       # 4. EDIT: GENRE MIX - blend all genres per frame
+        import genre_graft
+        edited, means = genre_graft.graft_mix(visitor, references, curves={g: curves[g][0] for g in models},
+                                              floor=base_alpha, gain=gain)
+        sim, edit = means[genre], "graft-mix"
+    elif graft:                                              # single-genre graft of the real reference motion
         import genre_graft
         edited, sim = genre_graft.graft(visitor, references[genre], floor=base_alpha,
                                         gain=gain, cap=max(cap, 0.95), curve=curves[genre][0])
+        edit = "graft"
     else:
         edited, sim = models[genre].edit(visitor, base_alpha, gain, cap)
+        edit = "transfer"
     report = {"genre": genre, "scores": scores, "allocation": allocation,
-              "similarity": float(sim), "frames": int(len(edited)), "edit": "graft" if graft else "transfer"}
+              "similarity": float(sim), "frames": int(len(edited)), "edit": edit}
     return edited, report
 
 
@@ -117,6 +124,8 @@ def main():
                                          "prototype from ALL its clips instead of the single reference")
     ap.add_argument("--graft", action="store_true", help="EDIT by grafting the reference's real genre "
                                                          "motion (genre_graft) instead of geometric transfer")
+    ap.add_argument("--graft-mix", action="store_true", help="EDIT by grafting a PER-FRAME MIX of all "
+                                                             "genres weighted by similarity (your personal blend)")
     ap.add_argument("--out", default="edited.npy", help="edited clip output (.npy)")
     a = ap.parse_args()
     a.visitor, a.refs_dir, a.out = map(os.path.expanduser, (a.visitor, a.refs_dir, a.out))
@@ -151,7 +160,8 @@ def main():
         print(f"[unnoticed_dance] using LEARNED prototypical encoder: {a.model}"
               + (f" (prototypes from {a.protos_dir})" if proto_clips else ""))
 
-    edited, rep = unnoticed_dance(visitor, refs, base_alpha=a.alpha, models=models, graft=a.graft)
+    graft_mode = "mix" if a.graft_mix else a.graft
+    edited, rep = unnoticed_dance(visitor, refs, base_alpha=a.alpha, models=models, graft=graft_mode)
     np.save(a.out, edited.astype(np.float32))
 
     print("[unnoticed_dance] read -> compare -> allocate -> edit")

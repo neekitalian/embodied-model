@@ -28,8 +28,24 @@ import genre_style as gs
 import genre_motifs as gm
 from hml_skeleton import IDX
 
-WIN, STRIDE = 24, 12
+WIN, STRIDE = 24, 6                                  # finer stride -> higher-resolution matching / transitions
 _HIP, _CHEST = IDX["pelvis"], IDX["spine3"]
+
+# per-zone GENRE strength: how much each anatomical zone carries the genre vs stays you. Root fully you
+# (locomotion / identity of place); torso mostly you; limbs carry the genre. Raises identity preservation
+# while keeping the genre legible where it reads most - the arms and legs.
+ZONE_GENRE = {"root": 0.0, "spine": 0.35, "left_arm": 1.0, "right_arm": 1.0, "left_leg": 0.85, "right_leg": 0.85}
+
+
+def _smooth_zp(x, a=0.4):
+    """Zero-phase smoothing (forward then backward EMA): removes the lag a one-directional filter adds,
+    so transitions stay crisp and centered instead of smeared/delayed. Works on 1-D curves and (T,22,3)."""
+    x = np.asarray(x, dtype=np.float32).copy()
+    for t in range(1, len(x)):
+        x[t] = a * x[t] + (1 - a) * x[t - 1]
+    for t in range(len(x) - 2, -1, -1):
+        x[t] = a * x[t] + (1 - a) * x[t + 1]
+    return x
 
 
 def _yaw(pose):
@@ -73,9 +89,10 @@ def _body_scale(clip):
     return float(np.mean(np.linalg.norm(clip - clip[:, _HIP:_HIP + 1, :], axis=-1))) + 1e-6
 
 
-def graft(visitor, reference, win=WIN, stride=STRIDE, floor=0.5, gain=0.5, cap=0.95, protect_root=True, curve=None):
-    """Return (grafted_clip, mean_similarity). Full visitor length; root kept; limbs grafted by similarity.
-    Pass `curve` (per-frame gate 0..1, e.g. from the trained model) to override the built-in Laban curve."""
+def _align_reference(visitor, reference, win=WIN, stride=STRIDE, curve=None):
+    """DTW-align the reference to the visitor and return the per-frame HIP-CENTERED reference pose
+    (faced like the visitor, scaled to their body) + the per-frame similarity curve + its mean.
+    aligned[t] is what you graft the visitor's limbs toward at frame t."""
     visitor = np.asarray(visitor, dtype=np.float32)
     reference = np.asarray(reference, dtype=np.float32)
     T = len(visitor)
@@ -86,50 +103,83 @@ def graft(visitor, reference, win=WIN, stride=STRIDE, floor=0.5, gain=0.5, cap=0
     V = np.array([gm.sig(visitor, a, a + win, stats) for a in v_starts], dtype=np.float32)
     R = np.array([gm.sig(reference, a, a + win, stats) for a in r_starts], dtype=np.float32)
 
-    # 1. MATCH: DTW -> per-visitor-window reference center, then per-frame reference index r(t)
-    path = _dtw_path(V, R)
+    path = _dtw_path(V, R)                                            # monotonic frame map, no teleporting
     vmap = {}
     for vi, rj in path:
         vmap.setdefault(vi, []).append(rj)
     v_centers = [a + win / 2.0 for a in v_starts]
     r_for_v = [float(np.mean([r_starts[rj] + win / 2.0 for rj in vmap.get(vi, [0])])) for vi in range(len(v_starts))]
-    if len(v_centers) >= 2:
-        r_frame = np.interp(np.arange(T), v_centers, r_for_v)
-    else:
-        r_frame = np.full(T, r_for_v[0] if r_for_v else 0.0)
-    for t in range(1, T):                                            # smooth the frame map (no teleporting)
-        r_frame[t] = 0.15 * r_frame[t] + 0.85 * r_frame[t - 1]
+    r_frame = np.interp(np.arange(T), v_centers, r_for_v) if len(v_centers) >= 2 else np.full(T, r_for_v[0] if r_for_v else 0.0)
+    r_frame = _smooth_zp(r_frame, 0.25)                              # zero-phase: smooth, no lag
     r_idx = np.clip(np.round(r_frame).astype(int), 0, len(reference) - 1)
 
     curve_lab, mean = gm.curve_from_bank(visitor, bank, stats, win, stride)
-    if curve is None:
-        curve = curve_lab
-    else:
-        curve = np.asarray(curve, dtype=np.float32)
+    curve = curve_lab if curve is None else np.asarray(curve, dtype=np.float32)
     sc = _body_scale(visitor) / _body_scale(reference)
 
-    # smoothed per-frame yaw delta so the grafted limbs face the way the visitor faces
     vyaw = np.unwrap(np.array([_yaw(visitor[t]) for t in range(T)]))
     ryaw = np.unwrap(np.array([_yaw(reference[r_idx[t]]) for t in range(T)]))
-    dyaw = vyaw - ryaw
-    for t in range(1, T):
-        dyaw[t] = 0.1 * dyaw[t] + 0.9 * dyaw[t - 1]
+    dyaw = _smooth_zp(vyaw - ryaw, 0.15)
 
-    # 2+3. ALIGN + GRAFT
-    out = visitor.copy()
+    aligned = np.zeros((T, 22, 3), dtype=np.float32)
     for t in range(T):
-        rf = reference[r_idx[t]] - reference[r_idx[t], _HIP]          # hip-center the reference pose
-        rf = _rot_y(rf, dyaw[t]) * sc                                 # face like visitor + scale to body
-        hip = visitor[t, _HIP]
-        w = min(cap, floor + gain * curve[t])
-        for zone, joints in gs.ZONES.items():
-            if protect_root and zone == "root":
-                continue                                             # keep locomotion / identity of place
-            for j in joints:
-                out[t, j] = (1 - w) * visitor[t, j] + w * (hip + rf[j])
+        rf = reference[r_idx[t]] - reference[r_idx[t], _HIP]          # hip-center
+        aligned[t] = _rot_y(rf, dyaw[t]) * sc                        # face like visitor + scale to body
+    return aligned, np.asarray(curve, dtype=np.float32), float(mean)
 
-    out = gs.one_euro_smooth(out, alpha=0.5)                          # 4. SMOOTH seams
-    return out, float(mean)
+
+def _compose(visitor, hip_targets, strength, zone_genre):
+    """Blend visitor <-> (hip + hip-centered target) per zone, per frame, then zero-phase smooth.
+    strength (T,) is the overall genre weight; zone_genre scales it per anatomical zone."""
+    T = len(visitor)
+    out = np.asarray(visitor, dtype=np.float32).copy()
+    for t in range(T):
+        hip = visitor[t, _HIP]
+        for zone, joints in gs.ZONES.items():
+            zg = zone_genre.get(zone, 1.0)
+            if zg <= 0.0:
+                continue                                             # zone stays fully the visitor
+            w = strength[t] * zg
+            for j in joints:
+                out[t, j] = (1 - w) * visitor[t, j] + w * (hip + hip_targets[t, j])
+    return _smooth_zp(out, 0.75)                                      # light zero-phase seam smoothing (keeps genre poses crisp)
+
+
+def graft(visitor, reference, win=WIN, stride=STRIDE, floor=0.5, gain=0.5, cap=0.95, curve=None, zone_genre=None):
+    """Single-genre graft. Full visitor length; per-zone identity preservation; smooth transitions.
+    Pass `curve` (per-frame gate 0..1, e.g. from the trained model) to override the built-in Laban curve."""
+    visitor = np.asarray(visitor, dtype=np.float32)
+    zone_genre = ZONE_GENRE if zone_genre is None else zone_genre
+    aligned, curve, mean = _align_reference(visitor, reference, win, stride, curve)
+    strength = _smooth_zp(np.clip(floor + gain * curve, 0.0, cap), 0.5)
+    return _compose(visitor, aligned, strength, zone_genre), float(mean)
+
+
+def graft_mix(visitor, references, curves=None, win=WIN, stride=STRIDE, floor=0.45, gain=0.5, cap=0.9, zone_genre=None):
+    """GENRE MIX graft: blend the aligned real motion of ALL genres, weighted PER FRAME by how much the
+    body resembles each (softmax-free, just normalized similarity). A body that reads 51% ballet / 45%
+    jazz literally dances a ballet-jazz blend, more ballet where it leans ballet and more jazz where it
+    leans jazz. Root/torso identity preserved via zone_genre; transitions zero-phase smoothed.
+
+    references : {genre: clip}.  curves : optional {genre: per-frame sim} (e.g. from the trained model).
+    Returns (mixed_clip, {genre: mean_similarity})."""
+    visitor = np.asarray(visitor, dtype=np.float32)
+    zone_genre = ZONE_GENRE if zone_genre is None else zone_genre
+    genres = list(references)
+    aligned, curve = {}, {}
+    means = {}
+    for g in genres:
+        aligned[g], curve[g], means[g] = _align_reference(visitor, references[g], win, stride,
+                                                           (curves or {}).get(g))
+    T = len(visitor)
+    C = np.stack([curve[g] for g in genres])                         # (G, T) per-frame similarity
+    mix = C / (C.sum(axis=0, keepdims=True) + 1e-8)                  # (G, T) per-frame genre weights
+    max_sim = C.max(axis=0)                                          # (T,) how genre-like overall
+    strength = _smooth_zp(np.clip(floor + gain * max_sim, 0.0, cap), 0.5)
+    mixed = np.zeros((T, 22, 3), dtype=np.float32)                   # per-frame blended genre target
+    for gi, g in enumerate(genres):
+        mixed += mix[gi][:, None, None] * aligned[g]
+    return _compose(visitor, mixed, strength, zone_genre), means
 
 
 def main():
