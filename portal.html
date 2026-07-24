@@ -179,6 +179,56 @@ async function loadRefs(){
       if(r.ok){ const d=await r.json(); if(d && d.joints) refs[name]=d.joints; } } catch(e){}
   }
 }
+
+// ---------- TRAINED model (prototypical ST-GCN, exported by pipeline/export_onnx.py) ----------
+// If /pipeline/model/{proto_encoder.onnx,protos.json} exist, the browser runs the real trained encoder
+// (onnxruntime-web) and gates the tiles with its verdict. Otherwise the Laban+FFT matching below is used.
+const MODEL = { session:null, ort:null, genres:null, protos:null, tau:1, win:24, stride:12 };
+async function loadModel(){
+  try {
+    const r = await fetch("/pipeline/model/protos.json", {cache:"no-store"});
+    if(!r.ok) return;
+    const pj = await r.json();
+    const ORT_CDN = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/";
+    const ort = await import(ORT_CDN + "ort.min.mjs");
+    ort.env.wasm.wasmPaths = ORT_CDN;
+    const session = await ort.InferenceSession.create("/pipeline/model/proto_encoder.onnx");
+    MODEL.ort=ort; MODEL.session=session; MODEL.genres=pj.genres; MODEL.protos=pj.protos;
+    MODEL.tau=pj.tau||1; MODEL.win=pj.win||24; MODEL.stride=pj.stride||12;
+    if(clip) rebuildTiles();                       // re-judge an already-captured clip with the model
+  } catch(e){ console.warn("trained model unavailable, using Laban matching:", e); }
+}
+// clip -> per-genre probability curves from the trained encoder (softmax over prototype distance)
+async function learnedCurves(clip){
+  const { ort, session, win, stride } = MODEL, T = clip.length;
+  const starts=[]; for(let a=0;a<Math.max(1,T-win+1);a+=stride) starts.push(a);
+  const N=starts.length, data=new Float32Array(N*win*22*3);
+  starts.forEach((a,i)=>{ for(let t=0;t<win;t++){ const f=clip[Math.min(a+t,T-1)];
+    for(let j=0;j<22;j++) for(let k=0;k<3;k++) data[((i*win+t)*22+j)*3+k]=f[j][k]; } });
+  const out = await session.run({ [session.inputNames[0]]: new ort.Tensor("float32", data, [N,win,22,3]) });
+  const z = out[session.outputNames[0]].data, D = MODEL.protos[0].length, K = MODEL.protos.length;
+  const centers = starts.map(a=>a+win/2), vals = MODEL.genres.map(()=>new Array(N));
+  for(let i=0;i<N;i++){
+    const logits=new Array(K);
+    for(let k=0;k<K;k++){ let dot=0; for(let d=0;d<D;d++) dot+=z[i*D+d]*MODEL.protos[k][d];
+      logits[k]=-(2-2*dot)/MODEL.tau; }                       // unit vectors: squared dist = 2 - 2 cos
+    const mx=Math.max(...logits); let s=0; const e=logits.map(l=>{const v=Math.exp(l-mx); s+=v; return v;});
+    for(let k=0;k<K;k++) vals[k][i]=e[k]/s;
+  }
+  const result={};
+  MODEL.genres.forEach((g,k)=>{
+    const curve=new Array(T).fill(vals[k][0]??0);
+    if(centers.length>=2) for(let t=0;t<T;t++){
+      if(t<=centers[0]) curve[t]=vals[k][0];
+      else if(t>=centers[N-1]) curve[t]=vals[k][N-1];
+      else { let i=1; while(i<N && centers[i]<t) i++; const f=(t-centers[i-1])/(centers[i]-centers[i-1]);
+        curve[t]=vals[k][i-1]+f*(vals[k][i]-vals[k][i-1]); }
+    }
+    for(let t=1;t<T;t++) curve[t]=0.3*curve[t]+0.7*curve[t-1];
+    result[g]={ curve, mean: curve.reduce((x,y)=>x+y,0)/T };
+  });
+  return result;
+}
 function footPhase(clip){
   const T=clip.length, sp=new Array(T).fill(0);
   for(let t=1;t<T;t++){ const l=clip[t][10],l0=clip[t-1][10],r=clip[t][11],r0=clip[t-1][11];
@@ -424,6 +474,7 @@ function exitReplay(){
 // ---------- init ----------
 async function init(){
   loadRefs();                                       // fetch AIST genre references in the background
+  loadModel();                                      // fetch the trained encoder (ONNX) if shipped
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:640, height:480 }, audio:false });
     video.srcObject = stream; await new Promise(r=>video.onloadedmetadata=r);
@@ -515,12 +566,24 @@ function finalizeClip(fps, truncated){
 }
 
 // build the 4 tiles: Original + genre transfer (if the AIST reference loaded) else heuristic edition
-function rebuildTiles(){
+let rebuildSeq=0;
+async function rebuildTiles(){
   if(!clip) return;
-  let real=0, best=null, bestM=-1;
-  // pass 1: per-frame similarity of your motion to each available genre's motif bank
-  const sc={};
-  for(const to of tiles){ if(!to.orig && refs[to.name]) sc[to.name]=simCurve(clip, refs[to.name]); }
+  const seq=++rebuildSeq;                          // drop stale async rebuilds
+  let real=0, best=null, bestM=-1, learned=false;
+  // pass 1: per-frame similarity of your motion to each genre - the TRAINED encoder when shipped,
+  // otherwise the Laban+FFT motif bank
+  let sc={};
+  if(MODEL.session){
+    try {
+      const lc=await learnedCurves(clip);
+      if(seq!==rebuildSeq) return;
+      for(const to of tiles){ if(!to.orig && refs[to.name]){
+        const c=lc[REF_FILES[to.name]]||lc[to.name]; if(c) sc[to.name]=c; } }
+      learned=Object.keys(sc).length>0;
+    } catch(e){ console.warn("learned inference failed, falling back:", e); sc={}; }
+  }
+  if(!learned) for(const to of tiles){ if(!to.orig && refs[to.name]) sc[to.name]=simCurve(clip, refs[to.name]); }
   const means=Object.values(sc).map(s=>s.mean);
   const mn=means.length?Math.min(...means):0, mx=means.length?Math.max(...means):1;
   // pass 2: build tiles; the genre you most resemble gets the strongest expressiveness boost,
@@ -546,7 +609,9 @@ function rebuildTiles(){
   const sharedFit=computeFit(tiles.flatMap(to=>to.clip), tiles[0].w, tiles[0].h);  // one framing so differences show
   for(const to of tiles) to.fit=sharedFit;
   note.innerHTML = real
-    ? `Genre motifs matched to your motion: the genre you most resemble (<b>★</b>) gets the strongest boost, applied where you resemble its signature moves. Identity protected; <b>α=${styleAlpha.toFixed(2)}</b> is the floor.`
+    ? (learned
+      ? `<b>Trained model</b> (prototypical ST-GCN, AIST-pretrained) judged your motion in-browser: the genre you most resemble (<b>★</b>) gets the strongest boost, applied where the model recognizes you leaning that way. Identity protected; <b>α=${styleAlpha.toFixed(2)}</b> is the floor.`
+      : `Genre motifs matched to your motion: the genre you most resemble (<b>★</b>) gets the strongest boost, applied where you resemble its signature moves. Identity protected; <b>α=${styleAlpha.toFixed(2)}</b> is the floor.`)
     : `Original + heuristic genre editions. Motif matching activates once <code>pipeline/refs/{jazz,ballet,hip-hop}.json</code> load.`;
 }
 

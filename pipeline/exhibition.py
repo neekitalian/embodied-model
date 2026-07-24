@@ -116,6 +116,17 @@ def main():
     if not refs:
         raise SystemExit(f"no genre references in {a.refs_dir}")
 
+    # standing model: default to the best validated checkpoint when present (and torch is available)
+    if not a.model:
+        import importlib.util
+        if importlib.util.find_spec("torch"):
+            for cand in ("proto_pretrain2.pt", "proto_encoder.pt"):
+                if os.path.exists(cand):
+                    a.model = cand
+                    if not a.protos_dir and os.path.isdir("data"):
+                        a.protos_dir = "data"
+                    break
+
     models = None
     if a.model:
         from proto_infer import build_learned_models
