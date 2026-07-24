@@ -123,6 +123,7 @@
 
     <div class="grp">
       <span class="glab">About</span>
+      <p class="desc" style="margin-bottom:10px">On each transformed screen, <b style="color:#5cd6ff">blue</b> is the genre edit laid over your <b style="color:#eceef5">white</b> original for direct comparison. The Original screen is white only.</p>
       <p class="desc">Runs entirely in your browser (nothing is uploaded); pose via MediaPipe. Every screen protects your identity movement - your root (locomotion) stays yours while the limbs carry real grafted genre motion, gated by &alpha;. &ldquo;Original&rdquo; is untouched; &ldquo;&#8595; JSON&rdquo; exports it as HumanML3D-22.</p>
     </div>
   </aside>
@@ -653,7 +654,7 @@ function loop(){
 function drawOverlay(j22, mirror){
   const w=overlay.width, h=overlay.height, X=x=>(mirror?(1-x):x)*w;
   const P=j22.map(p=>[ X(p[0]), p[1]*h, (p[2]||0) ]);
-  drawFigure(octx, P, [92,214,255]);
+  drawFigure(octx, P, [236,238,245]);
 }
 
 // ---------- record / upload ----------
@@ -829,12 +830,19 @@ function drawFigure(ctx, P, col){
   ctx.strokeStyle=fc; ctx.lineWidth=1.4; ctx.beginPath();
   ctx.moveTo(mx-px*fw*0.16,my-py*fw*0.16); ctx.quadraticCurveTo(mx+ux*fh*0.06,my+uy*fh*0.06, mx+px*fw*0.16,my+py*fw*0.16); ctx.stroke();
 }
+const WHITE=[236,238,245], BLUE=[92,214,255];   // original = white, transformed = blue
 function drawTile(to, frame){
-  const ctx=to.ctx, w=to.w, h=to.h, fit=to.fit, j22=to.clip[Math.min(frame, to.clip.length-1)];
+  const ctx=to.ctx, w=to.w, h=to.h, fit=to.fit;
   ctx.fillStyle="#060610"; ctx.fillRect(0,0,w,h);
   const ca=Math.cos(spinAng), sa=Math.sin(spinAng);
-  const P=j22.map(p=>[ fit.cx+(p[0]*ca+p[2]*sa)*fit.scale, fit.cy-p[1]*fit.scale, p[0]*(-sa)+p[2]*ca ]);
-  drawFigure(ctx, P, to.orig ? [95,169,216] : [106,208,127]);
+  const proj=j22=>j22.map(p=>[ fit.cx+(p[0]*ca+p[2]*sa)*fit.scale, fit.cy-p[1]*fit.scale, p[0]*(-sa)+p[2]*ca ]);
+  if(to.orig){                                   // Original screen: white figure only
+    drawFigure(ctx, proj(to.clip[Math.min(frame, to.clip.length-1)]), WHITE);
+  } else {                                        // transformed screen: white original underneath, blue transform on top
+    if(clip){ ctx.save(); ctx.globalAlpha=0.45;
+      drawFigure(ctx, proj(clip[Math.min(frame, clip.length-1)]), WHITE); ctx.restore(); }
+    drawFigure(ctx, proj(to.clip[Math.min(frame, to.clip.length-1)]), BLUE);
+  }
 }
 function playLoop(){
   if(!clip) return;
