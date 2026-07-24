@@ -595,7 +595,7 @@ async function init(){
 }
 
 // ---------- capture loop (webcam + uploaded video) ----------
-let lastT=-1;
+let lastT=-1, uploadWatch=null, uploadStartT=0;
 function loop(){
   if(replaying){ requestAnimationFrame(loop); return; }   // uploaded clip is looping as a replay - skip detection
   const vid = source==="file"?upvideo:video;
@@ -638,12 +638,29 @@ videoFile.onchange=async(e)=>{ const f=e.target.files[0]; if(!f) return;
   if(!landmarker){ showBanner("Pose model isn't ready yet - wait a moment and retry.","err"); return; }
   exitReplay();
   if(fileURL) URL.revokeObjectURL(fileURL); fileURL=URL.createObjectURL(f);
-  upvideo.src=fileURL; upvideo.loop=false; upvideo.currentTime=0; video.style.display="none"; upvideo.style.display="block";
+  upvideo.src=fileURL; upvideo.loop=false; upvideo.muted=true; upvideo.currentTime=0; video.style.display="none"; upvideo.style.display="block";
   await upvideo.play().catch(()=>{}); overlay.width=upvideo.videoWidth||640; overlay.height=upvideo.videoHeight||480;
   source="file"; recFrames=[]; recording=true; recStart=performance.now();
   recBtn.disabled=true; stopBtn.disabled=false; durSel.disabled=true; recMeta.innerHTML=`<span class="dot rec"></span>Processing video…`;
+  // watchdog: if the clip never advances (undecodable codec such as HEVC / MPEG-4), fail with advice instead of hanging
+  uploadStartT=performance.now();
+  if(uploadWatch) clearInterval(uploadWatch);
+  uploadWatch=setInterval(()=>{
+    if(source!=="file" || !recording){ clearInterval(uploadWatch); uploadWatch=null; return; }
+    if(upvideo.currentTime<0.05 && performance.now()-uploadStartT>5000)
+      abortUpload("Could not read that video in the browser. It is likely a codec browsers cannot play (HEVC or MPEG-4). Re-encode it to H.264 MP4, or try a shorter clip.");
+  }, 1000);
+  upvideo.onerror=()=>abortUpload("That video failed to load. Re-encode it to H.264 MP4 - browsers cannot decode HEVC or MPEG-4 clips.");
   upvideo.onended=finishUpload; };
-function finishUpload(){ if(source!=="file") return; recording=false; upvideo.onended=null;
+function abortUpload(msg){
+  if(uploadWatch){ clearInterval(uploadWatch); uploadWatch=null; }
+  recording=false; upvideo.onended=null; upvideo.onerror=null; try{ upvideo.pause(); }catch(e){}
+  upvideo.style.display="none"; video.style.display="block";
+  overlay.width=video.videoWidth||640; overlay.height=video.videoHeight||480; octx.clearRect(0,0,overlay.width,overlay.height);
+  source="cam"; recBtn.disabled=!camReady; stopBtn.disabled=true; durSel.disabled=false; videoFile.disabled=false; fileLabel.classList.remove("dis"); videoFile.value="";
+  recMeta.textContent=msg; showBanner(msg,"err");
+}
+function finishUpload(){ if(source!=="file") return; if(uploadWatch){ clearInterval(uploadWatch); uploadWatch=null; } recording=false; upvideo.onended=null; upvideo.onerror=null;
   const dur=upvideo.duration||((performance.now()-recStart)/1000);
   source="cam"; recBtn.disabled=!camReady; stopBtn.disabled=true; durSel.disabled=false; videoFile.disabled=false; fileLabel.classList.remove("dis"); videoFile.value="";
   octx.clearRect(0,0,overlay.width,overlay.height);
