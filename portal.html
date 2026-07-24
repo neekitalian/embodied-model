@@ -622,10 +622,8 @@ function loop(){
 }
 function drawOverlay(j22, mirror){
   const w=overlay.width, h=overlay.height, X=x=>(mirror?(1-x):x)*w;
-  octx.lineWidth=3; octx.strokeStyle="#6ad07f";
-  for (const [a,b] of BONES){ octx.beginPath(); octx.moveTo(X(j22[a][0]),j22[a][1]*h); octx.lineTo(X(j22[b][0]),j22[b][1]*h); octx.stroke(); }
-  octx.fillStyle="#ffd24d";
-  for (const p of j22){ octx.beginPath(); octx.arc(X(p[0]),p[1]*h,3.5,0,7); octx.fill(); }
+  const P=j22.map(p=>[ X(p[0]), p[1]*h, (p[2]||0) ]);
+  drawFigure(octx, P, [92,214,255]);
 }
 
 // ---------- record / upload ----------
@@ -741,18 +739,47 @@ function computeFit(frames,w,h){
   return { scale, cx:w/2-(mnx+mxx)/2*scale, cy:h/2+(mny+mxy)/2*scale };
 }
 let playing=false, spin=false, loopOn=true, frameIdx=0, spinAng=0, lastFrameT=0;
+// Face + body figure (after soheiw/unnoticed_dance): filled torso, depth-shaded limbs,
+// joint dots, and an oval face glyph with eyes + mouth oriented along neck -> head.
+// P is the already-projected array of [screenX, screenY, depthZ]; col is the base [r,g,b].
+const FIG={HEAD:15,NECK:12,LS:16,RS:17,LH:1,RH:2};
+function drawFigure(ctx, P, col){
+  const zt=p=>Math.max(0,Math.min(1,(p[2]+0.5)));
+  const bc=(t,a)=>`rgba(${(col[0]*(0.55+0.45*t))|0},${(col[1]*(0.55+0.45*t))|0},${(col[2]*(0.55+0.45*t))|0},${a})`;
+  const {HEAD,NECK,LS,RS,LH,RH}=FIG;
+  // torso
+  ctx.beginPath(); ctx.moveTo(P[LS][0],P[LS][1]); ctx.lineTo(P[RS][0],P[RS][1]);
+  ctx.lineTo(P[RH][0],P[RH][1]); ctx.lineTo(P[LH][0],P[LH][1]); ctx.closePath();
+  ctx.fillStyle=bc(0.9,0.20); ctx.fill();
+  // limbs
+  ctx.lineCap="round";
+  for(const [a,b] of BONES){ const t=(zt(P[a])+zt(P[b]))/2;
+    ctx.strokeStyle=bc(t,0.92); ctx.lineWidth=2.7+1.6*t;
+    ctx.beginPath(); ctx.moveTo(P[a][0],P[a][1]); ctx.lineTo(P[b][0],P[b][1]); ctx.stroke(); }
+  // joint dots (head is drawn as a face glyph)
+  for(let j=0;j<P.length;j++){ if(j===HEAD) continue; const p=P[j];
+    ctx.fillStyle=bc(zt(p),0.95); ctx.beginPath(); ctx.arc(p[0],p[1],3,0,7); ctx.fill(); }
+  // face glyph
+  const H=P[HEAD], Nk=P[NECK]; let ux=H[0]-Nk[0], uy=H[1]-Nk[1]; const ul=Math.hypot(ux,uy)||1; ux/=ul; uy/=ul;
+  const px=-uy, py=ux, fh=Math.max(13,ul*1.5), fw=fh*0.72;
+  const cx=H[0]+ux*fh*0.16, cy=H[1]+uy*fh*0.16, fc=bc(0.98,1);
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(Math.atan2(uy,ux)-Math.PI/2);
+  ctx.beginPath(); ctx.ellipse(0,0,fw/2,fh/2,0,0,7);
+  ctx.fillStyle="rgba(8,8,15,0.5)"; ctx.fill(); ctx.strokeStyle=fc; ctx.lineWidth=1.6; ctx.stroke(); ctx.restore();
+  const ex=px*fw*0.26, ey=py*fw*0.26, ecx=cx+ux*fh*0.05, ecy=cy+uy*fh*0.05, er=Math.max(1.4,fw*0.05);
+  ctx.fillStyle=fc;
+  ctx.beginPath(); ctx.arc(ecx-ex,ecy-ey,er,0,7); ctx.fill();
+  ctx.beginPath(); ctx.arc(ecx+ex,ecy+ey,er,0,7); ctx.fill();
+  const mx=cx-ux*fh*0.24, my=cy-uy*fh*0.24;
+  ctx.strokeStyle=fc; ctx.lineWidth=1.4; ctx.beginPath();
+  ctx.moveTo(mx-px*fw*0.16,my-py*fw*0.16); ctx.quadraticCurveTo(mx+ux*fh*0.06,my+uy*fh*0.06, mx+px*fw*0.16,my+py*fw*0.16); ctx.stroke();
+}
 function drawTile(to, frame){
   const ctx=to.ctx, w=to.w, h=to.h, fit=to.fit, j22=to.clip[Math.min(frame, to.clip.length-1)];
-  ctx.fillStyle="#0b0b10"; ctx.fillRect(0,0,w,h);
+  ctx.fillStyle="#060610"; ctx.fillRect(0,0,w,h);
   const ca=Math.cos(spinAng), sa=Math.sin(spinAng);
   const P=j22.map(p=>[ fit.cx+(p[0]*ca+p[2]*sa)*fit.scale, fit.cy-p[1]*fit.scale, p[0]*(-sa)+p[2]*ca ]);
-  ctx.lineWidth=3; ctx.lineCap="round";
-  const col = to.orig ? [95,169,216] : [106,208,127];
-  for(const [a,b] of BONES){ const zt=Math.max(0,Math.min(1,((P[a][2]+P[b][2])/2+0.5)));
-    ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${0.5+0.5*zt})`;
-    ctx.beginPath(); ctx.moveTo(P[a][0],P[a][1]); ctx.lineTo(P[b][0],P[b][1]); ctx.stroke(); }
-  ctx.fillStyle="#ffd24d";
-  for(const p of P){ ctx.beginPath(); ctx.arc(p[0],p[1],2.8,0,7); ctx.fill(); }
+  drawFigure(ctx, P, to.orig ? [95,169,216] : [106,208,127]);
 }
 function playLoop(){
   if(!clip) return;
@@ -775,12 +802,7 @@ dlBtn.onclick=()=>{ const blob=new Blob([JSON.stringify({ format:"HumanML3D-22",
 function drawSkelInto(ctx, j22, fit, col){
   const ca=Math.cos(spinAng), sa=Math.sin(spinAng);
   const P=j22.map(p=>[ fit.cx+(p[0]*ca+p[2]*sa)*fit.scale, fit.cy-p[1]*fit.scale, p[0]*(-sa)+p[2]*ca ]);
-  ctx.lineWidth=3; ctx.lineCap="round";
-  for(const [a,b] of BONES){ const zt=Math.max(0,Math.min(1,((P[a][2]+P[b][2])/2+0.5)));
-    ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${0.5+0.5*zt})`;
-    ctx.beginPath(); ctx.moveTo(P[a][0],P[a][1]); ctx.lineTo(P[b][0],P[b][1]); ctx.stroke(); }
-  ctx.fillStyle="#ffd24d";
-  for(const p of P){ ctx.beginPath(); ctx.arc(p[0],p[1],2.6,0,7); ctx.fill(); }
+  drawFigure(ctx, P, col);
 }
 
 // export a side-by-side comparison video: source + Original(MediaPipe) + Jazz + Ballet + Hip-hop
