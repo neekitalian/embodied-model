@@ -144,9 +144,8 @@
 <script>
 // ---------- config ----------
 const RATINGS = [
-  ["identity_preservation","Identity preservation","lost the person","clearly the same person"],
-  ["expressivity","Expressivity","inexpressive","highly expressive"],
-  ["genre_preference","Genre preference","dislike this version","like this version"],
+  ["identity_preservation","How much do you think this looks like the original action?","not at all","exactly the same action"],
+  ["expressivity","How expressive or dance-like does this movement feel?","not expressive","very expressive"],
 ];
 const QUALS = [];   // no qualitative questions
 const RAW_COLS = ["participant_id","timestamp","stimulus_id","source_video_filename","action_label","action_type",
@@ -345,9 +344,9 @@ function screenStimulus(sec){
       </div>
       <div class="progress"><i style="width:${pct}%"></i></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
-        <div><div class="muted" style="margin-bottom:4px">Source action: <b style="color:var(--ink)">${s.action_label}</b></div>
-          <div class="videowrap"><video src="${s.original_video_path}" autoplay muted loop playsinline
-            onerror="this.parentElement.innerHTML='<div class=muted style=\\'padding:24px;text-align:center\\'>original skeleton<br>not available</div>'"></video></div></div>
+        <div><div class="muted" style="margin-bottom:4px">Original action: <b style="color:var(--ink)">${s.action_label}</b></div>
+          <div class="videowrap"><video src="${s.source_video_path}" autoplay muted loop playsinline
+            onerror="this.parentElement.innerHTML='<div class=muted style=\\'padding:24px;text-align:center\\'>source video<br>not available</div>'"></video></div></div>
         <div><div class="muted" style="margin-bottom:4px">Translated output</div>
           <div class="videowrap"><video src="${s.output_video_path}" autoplay muted loop playsinline controls
             onerror="this.parentElement.innerHTML='<div class=warnbox>Stimulus video not found. Generate it with make_stimuli.py and commit research/.</div>'"></video></div></div>

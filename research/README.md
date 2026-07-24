@@ -33,8 +33,8 @@ Then commit `research/sources`, `research/stimuli`, and `research/stimuli.json` 
 
 Participant responses always autosave to the browser's localStorage and can be exported as CSV from the
 Admin tab (raw = one row per participant x stimulus; summary = grouped by action x genre x allocation
-level). Each stimulus collects 3 ratings (identity_preservation, expressivity, genre_preference) plus one
-optional comment.
+level). Each stimulus collects 2 ratings: identity_preservation (how much it looks like the original
+action) and expressivity (how expressive / dance-like the movement feels).
 
 ## Central storage (Google Sheet) - optional
 
