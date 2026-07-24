@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unnoticed Dance &middot; Research Portal</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { --bg:#0f0f14; --panel:#16161e; --line:#262631; --ink:#e8e8ee; --dim:#9a9ba6;
+    --blue:#5fa9d8; --green:#6ad07f; --gold:#ffd24d; --red:#e07a7a; --purple:#c58cf0; }
+  body { background:var(--bg); color:var(--ink); font-family:-apple-system,"PingFang SC","Segoe UI",sans-serif;
+    min-height:100vh; padding:20px; line-height:1.5; }
+  a { color:var(--blue); text-decoration:none; } a:hover{ text-decoration:underline; }
+  .wrap { max-width:1080px; margin:0 auto; }
+  header { margin-bottom:14px; }
+  h1 { font-size:20px; } .sub { color:var(--dim); font-size:13px; margin-top:3px; }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:1px; color:var(--dim); margin:26px 0 12px; }
+  h3 { font-size:15px; margin-bottom:6px; }
+
+  .tabs { display:flex; gap:8px; margin:16px 0 4px; }
+  .tab { background:#1e1e28; border:1px solid var(--line); border-radius:9px; padding:9px 16px; font-size:13.5px;
+    cursor:pointer; color:var(--ink); }
+  .tab.on { background:var(--blue); color:#0f0f14; border-color:var(--blue); font-weight:600; }
+
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:14px; }
+  .muted { color:var(--dim); font-size:12.5px; }
+  button { background:#1e1e28; color:var(--ink); border:1px solid var(--line); border-radius:9px;
+    padding:9px 15px; font-size:13.5px; cursor:pointer; }
+  button:hover:not(:disabled){ border-color:var(--blue); } button:disabled{ opacity:.4; cursor:not-allowed; }
+  button.primary { background:var(--green); color:#0f0f14; border-color:var(--green); font-weight:600; }
+  input[type=text], select, textarea { background:#1e1e28; color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:8px 10px; font-size:13px; font-family:inherit; }
+  textarea { width:100%; min-height:52px; resize:vertical; }
+  label.fld { display:block; font-size:13px; margin:12px 0 4px; }
+
+  video { width:100%; border-radius:10px; background:#000; display:block; }
+  .videowrap { background:#0b0b10; border:1px solid var(--line); border-radius:10px; padding:8px; }
+
+  /* admin readiness grid */
+  .rgrid { display:grid; grid-template-columns:repeat(12, 1fr); gap:5px; }
+  .cellhdr { font-size:10px; color:var(--dim); text-align:center; }
+  .cell { aspect-ratio:1; border-radius:5px; border:1px solid var(--line); background:#14141b;
+    display:grid; place-items:center; font-size:9px; color:#6a6a75; cursor:default; }
+  .cell.ready { background:#16321f; border-color:#2e6b40; color:var(--green); }
+  .cell.miss { background:#2a1618; border-color:#5a2f2f; color:#c98; }
+  .bar { display:flex; gap:10px; flex-wrap:wrap; margin:6px 0 16px; }
+  .stat { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:11px 16px; flex:1; min-width:130px; }
+  .stat .n { font-size:21px; font-weight:700; } .stat .l { font-size:11px; color:var(--dim); margin-top:2px; }
+  .stat.ok .n { color:var(--green); } .stat.warn .n { color:var(--orange,#e8a660); }
+
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--dim); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:.5px; }
+  td code { color:var(--blue); }
+  .pill { font-size:10px; padding:1px 7px; border-radius:20px; background:#1e1e28; border:1px solid var(--line); }
+
+  /* rating scale */
+  .rate { margin:10px 0; }
+  .rate .q { font-size:13.5px; margin-bottom:5px; }
+  .scale { display:flex; gap:4px; align-items:center; }
+  .scale label { flex:1; text-align:center; font-size:12px; background:#1e1e28; border:1px solid var(--line);
+    border-radius:7px; padding:7px 0; cursor:pointer; user-select:none; }
+  .scale input { display:none; }
+  .scale input:checked + span { }
+  .scale label.sel { background:var(--blue); color:#0f0f14; border-color:var(--blue); font-weight:700; }
+  .anchor { display:flex; justify-content:space-between; font-size:10.5px; color:var(--dim); margin-top:3px; }
+
+  .progress { height:6px; background:#1e1e28; border-radius:6px; overflow:hidden; margin:10px 0 2px; }
+  .progress > i { display:block; height:100%; background:var(--green); width:0; transition:width .2s; }
+  .flags { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  footer { margin-top:26px; color:#55565f; font-size:11.5px; }
+  .warnbox { background:#161d22; border:1px solid #24404e; color:#a9d4e6; border-radius:10px; padding:10px 13px; font-size:12.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Research Portal <span class="muted" style="font-weight:400">&middot; Round 2 perceptual study</span></h1>
+    <div class="sub">Unnoticed Dance &middot; separate survey mode. Record &amp; Render is unchanged &middot;
+      <a href="/">dashboard</a> &middot; <a href="/portal">record &amp; render</a> &middot; <a href="/dance-graph">tool graph</a></div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab" id="tab-admin" onclick="setMode('admin')">Admin / preparation</div>
+    <div class="tab" id="tab-survey" onclick="setMode('survey')">Participant survey</div>
+  </div>
+
+  <!-- ADMIN ------------------------------------------------------------------->
+  <section id="admin" style="display:none">
+    <div class="bar">
+      <div class="stat ok"><div class="n" id="ad-ready">0 / 48</div><div class="l">stimulus videos ready</div></div>
+      <div class="stat"><div class="n">4 &times; 3 &times; 4</div><div class="l">actions &times; genres &times; levels</div></div>
+      <div class="stat"><div class="n" id="ad-parts">0</div><div class="l">participants stored on this device</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Preparation</h3>
+      <p class="muted">Generate the 48 stimulus videos on your Mac, then commit <code>research/</code> so Vercel serves them:</p>
+      <p class="muted" style="margin-top:6px"><code>cd pipeline &amp;&amp; python make_stimuli.py --videos ~/Desktop/Videos</code></p>
+      <div style="margin-top:10px"><button onclick="refreshReady()">Re-check readiness</button>
+        <label style="margin-left:14px;font-size:13px"><input type="checkbox" id="cfg-reveal" onchange="saveCfg()"> reveal genre &amp; allocation level to participants</label></div>
+    </div>
+
+    <h2>Source actions</h2>
+    <div class="grid" id="ad-sources" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px"></div>
+
+    <h2>Stimulus readiness (48)</h2>
+    <div class="card" id="ad-grid"></div>
+
+    <h2>Stimulus table</h2>
+    <div class="card" style="padding:6px 4px"><table><thead><tr>
+      <th>stimulus_id</th><th>action</th><th>type</th><th>genre</th><th>level</th><th>video</th></tr></thead>
+      <tbody id="ad-table"></tbody></table></div>
+
+    <h2>Data export</h2>
+    <div class="card">
+      <button class="primary" onclick="dlRaw()">Download raw CSV</button>
+      <button onclick="dlSummary()" style="margin-left:8px">Download summary CSV</button>
+      <span class="muted" style="margin-left:12px" id="ad-export">responses from all participants stored in this browser</span>
+    </div>
+  </section>
+
+  <!-- SURVEY ------------------------------------------------------------------>
+  <section id="survey" style="display:none"></section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+// ---------- config ----------
+const RATINGS = [
+  ["dance_likeness","Dance-likeness","not a dance","clearly a dance"],
+  ["everyday_likeness","Everyday-likeness","not everyday","clearly everyday"],
+  ["genre_fit","Genre fit","does not fit","fits perfectly"],
+  ["perceived_transformation","Perceived transformation","unchanged","heavily transformed"],
+  ["naturalness","Naturalness","unnatural","natural"],
+  ["intentionality","Intentionality","random","deliberate"],
+  ["pleasantness","Pleasantness","unpleasant","pleasant"],
+  ["strangeness","Strangeness","ordinary","strange"],
+  ["expressiveness","Expressiveness","inexpressive","expressive"],
+  ["humanness","Humanness","not human","human"],
+  ["mechanicalness","Mechanicalness","organic","mechanical"],
+  ["emotional_engagement","Emotional engagement","detached","engaged"],
+  ["preserves_source_action","Preserves source action","lost","preserved"],
+];
+const QUALS = [
+  ["feeling","What feeling did this video give you?"],
+  ["feeling_part","Which part of the movement produced that feeling?"],
+  ["changed","What changed between the source action and the translated work?"],
+  ["remained","What remained recognisable from the everyday action?"],
+  ["person_machine_performance","Did the output feel closer to a person, a machine, or a performance?"],
+  ["why_genre","Why does it read as ballet, jazz, hip-hop, or none of these?"],
+];
+const RAW_COLS = ["participant_id","timestamp","stimulus_id","source_video_filename","action_label","action_type",
+  "social_dimension","repetition_dimension","genre","allocation_level",
+  ...RATINGS.map(r=>r[0]), ...QUALS.map(q=>q[0])];
+
+const LS = {
+  cfg:"ud_research_config", parts:"ud_research_participants", P:id=>"ud_research_p_"+id,
+};
+let MANIFEST=null, STIM=[], MODE="admin";
+
+function getCfg(){ try{ return JSON.parse(localStorage.getItem(LS.cfg))||{}; }catch(e){ return {}; } }
+function saveCfg(){ localStorage.setItem(LS.cfg, JSON.stringify({ reveal: document.getElementById("cfg-reveal").checked })); }
+function partIds(){ try{ return JSON.parse(localStorage.getItem(LS.parts))||[]; }catch(e){ return []; } }
+function getPart(id){ try{ return JSON.parse(localStorage.getItem(LS.P(id))); }catch(e){ return null; } }
+function savePart(p){ localStorage.setItem(LS.P(p.participant_id), JSON.stringify(p));
+  const ids=partIds(); if(!ids.includes(p.participant_id)){ ids.push(p.participant_id); localStorage.setItem(LS.parts, JSON.stringify(ids)); } }
+
+// seeded shuffle so a participant's order is stable across resume
+function hash(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function shuffled(arr, seed){ const r=mulberry32(seed), a=arr.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(r()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+// ---------- init ----------
+async function init(){
+  document.getElementById("cfg-reveal").checked = !!getCfg().reveal;
+  try { const r=await fetch("/research/stimuli.json",{cache:"no-store"}); MANIFEST=await r.json(); STIM=MANIFEST.stimuli||[]; }
+  catch(e){ STIM=[]; }
+  document.getElementById("foot").innerHTML =
+    `48 stimuli = 4 actions &times; 3 genres &times; 4 allocation levels. Responses autosave to this browser after each stimulus; export CSV from Admin. Runs locally and on Vercel (static).`;
+  const h=(location.hash||"").replace("#","");
+  setMode(h==="survey"?"survey":"admin");
+}
+function setMode(m){
+  MODE=m; location.hash=m;
+  document.getElementById("admin").style.display = m==="admin"?"block":"none";
+  document.getElementById("survey").style.display = m==="survey"?"block":"none";
+  document.getElementById("tab-admin").classList.toggle("on", m==="admin");
+  document.getElementById("tab-survey").classList.toggle("on", m==="survey");
+  if(m==="admin") renderAdmin(); else renderSurvey();
+}
+
+// ---------- ADMIN ----------
+async function renderAdmin(){
+  document.getElementById("ad-parts").textContent = partIds().length;
+  // sources
+  const sd=document.getElementById("ad-sources"); sd.innerHTML="";
+  (MANIFEST?.actions||[]).forEach(a=>{
+    sd.insertAdjacentHTML("beforeend",
+     `<div class="card" style="margin:0"><div class="videowrap"><video src="/research/sources/${a.source}" muted loop playsinline controls onerror="this.parentElement.innerHTML='<div class=muted style=\\'padding:20px;text-align:center\\'>source not uploaded yet<br>(${a.source})</div>'"></video></div>
+       <h3 style="margin-top:8px">${a.label}</h3>
+       <div class="flags"><span class="pill">${a.social}</span><span class="pill">${a.repetition}</span></div>
+       <div class="muted" style="margin-top:6px">file: <code>${a.source}</code></div></div>`);
+  });
+  // table
+  const tb=document.getElementById("ad-table"); tb.innerHTML="";
+  STIM.forEach(s=>tb.insertAdjacentHTML("beforeend",
+    `<tr><td><code>${s.stimulus_id}</code></td><td>${s.action_label}</td><td class="muted">${s.action_type}</td>
+     <td>${s.genre}</td><td>${s.allocation_level.toFixed(2)}</td>
+     <td id="st-${s.stimulus_id}" class="muted">checking...</td></tr>`));
+  renderGrid();
+  refreshReady();
+}
+function renderGrid(){
+  // rows = 4 actions; cols = 3 genres x 4 levels = 12
+  const g=document.getElementById("ad-grid"); const acts=MANIFEST?.actions||[]; const genres=MANIFEST?.genres||[]; const levels=MANIFEST?.levels||[];
+  let html='<div class="rgrid"><div class="cellhdr"></div>';
+  genres.forEach(gn=> levels.forEach(lv=> html+=`<div class="cellhdr">${gn.slice(0,2)}&middot;${Math.round(lv*100)}</div>`));
+  acts.forEach(a=>{
+    html+=`<div class="cellhdr" style="text-align:left">${a.label.split(" ")[0]}</div>`;
+    genres.forEach(gn=> levels.forEach(lv=>{
+      const gid = gn==="hip-hop"?"hiphop":gn; const sid=`${a.key}_${gid}_${Math.round(lv*100)}`;
+      html+=`<div class="cell" id="cell-${sid}" title="${sid}">&middot;</div>`;
+    }));
+  });
+  html+="</div>";
+  g.innerHTML=html;
+}
+async function refreshReady(){
+  let ready=0;
+  await Promise.all(STIM.map(async s=>{
+    const ok = await exists(s.output_video_path);
+    const cell=document.getElementById("cell-"+s.stimulus_id);
+    const td=document.getElementById("st-"+s.stimulus_id);
+    if(cell){ cell.className="cell "+(ok?"ready":"miss"); cell.textContent=ok?"✓":"✗"; }
+    if(td){ td.innerHTML= ok?`<a href="${s.output_video_path}" target="_blank">ready</a>`:'<span style="color:#c98">missing</span>'; }
+    if(ok) ready++;
+  }));
+  document.getElementById("ad-ready").textContent = `${ready} / ${STIM.length}`;
+}
+async function exists(url){ try{ const r=await fetch(url,{method:"HEAD",cache:"no-store"}); return r.ok; }catch(e){ return false; } }
+
+// ---------- SURVEY ----------
+let PART=null, ORDER=[], IDX=0;
+function renderSurvey(){
+  const sec=document.getElementById("survey");
+  if(!PART){ screenIntro(sec); return; }
+  if(!PART.background){ screenBackground(sec); return; }
+  if(IDX>=ORDER.length){ screenDone(sec); return; }
+  screenStimulus(sec);
+}
+function screenIntro(sec){
+  const resumable = partIds().map(getPart).filter(p=>p && p.background && (p.idx||0) < (p.order||[]).length);
+  sec.innerHTML = `
+    <div class="card">
+      <h3>Consent &amp; introduction</h3>
+      <p class="muted">You will watch short movement videos and rate how each one feels. There are no right or wrong answers.
+      Ratings and short written responses are stored in this browser and exported by the researcher. You may stop at any time.</p>
+      <label class="fld">Participant ID</label>
+      <input type="text" id="pid" placeholder="e.g. p01" style="width:200px">
+      <div style="margin-top:14px"><button class="primary" onclick="startParticipant()">I consent, begin</button></div>
+    </div>
+    ${resumable.length? `<div class="card"><h3>Resume</h3>${resumable.map(p=>
+      `<div style="margin:6px 0"><button onclick="resumeParticipant('${p.participant_id}')">Resume ${p.participant_id}</button>
+       <span class="muted" style="margin-left:8px">${p.idx||0} / ${(p.order||[]).length} done</span></div>`).join("")}</div>`:""}`;
+}
+function startParticipant(){
+  const id=(document.getElementById("pid").value||"").trim() || ("p"+Date.now().toString(36));
+  const existing=getPart(id);
+  if(existing && existing.background){ PART=existing; ORDER=PART.order; IDX=PART.idx||0; renderSurvey(); return; }
+  PART={ participant_id:id, timestamp_start:new Date().toISOString(), background:null,
+    order: shuffled(STIM.map(s=>s.stimulus_id), hash(id)), responses:{}, idx:0 };
+  ORDER=PART.order; IDX=0; savePart(PART); renderSurvey();
+}
+function resumeParticipant(id){ PART=getPart(id); ORDER=PART.order; IDX=PART.idx||0; renderSurvey(); }
+
+function screenBackground(sec){
+  sec.innerHTML = `<div class="card"><h3>A few background questions</h3>
+    <label class="fld">Dance experience</label>
+    ${radio("bg_dance",["none","informal","formal"])}
+    <label class="fld">Familiarity with generative AI</label>
+    ${radio("bg_ai",["low","medium","high"])}
+    <label class="fld">Confidence describing movement in words (1 = not at all, 7 = very confident)</label>
+    ${scale("bg_conf")}
+    <div style="margin-top:16px"><button class="primary" onclick="saveBackground()">Continue</button></div></div>`;
+}
+function radio(name,opts){ return `<div class="flags">`+opts.map(o=>
+  `<label class="pill" style="cursor:pointer;padding:7px 12px"><input type="radio" name="${name}" value="${o}" style="margin-right:6px">${o}</label>`).join("")+`</div>`; }
+function scale(name){ let h='<div class="scale">'; for(let i=1;i<=7;i++)
+  h+=`<label onclick="selScale(this)"><input type="radio" name="${name}" value="${i}">${i}</label>`; return h+'</div>'; }
+function selScale(lab){ lab.parentElement.querySelectorAll("label").forEach(l=>l.classList.remove("sel")); lab.classList.add("sel"); lab.querySelector("input").checked=true; }
+function val(name){ const el=document.querySelector(`input[name="${name}"]:checked`); return el?el.value:null; }
+
+function saveBackground(){
+  const bg={ dance_experience:val("bg_dance"), generative_ai_familiarity:val("bg_ai"), movement_description_confidence:val("bg_conf") };
+  if(!bg.dance_experience||!bg.generative_ai_familiarity||!bg.movement_description_confidence){ alert("Please answer all three."); return; }
+  PART.background=bg; savePart(PART); renderSurvey();
+}
+
+function screenStimulus(sec){
+  const sid=ORDER[IDX], s=STIM.find(x=>x.stimulus_id===sid); if(!s){ IDX++; savePart(PART); renderSurvey(); return; }
+  const reveal=!!getCfg().reveal;
+  const pct=Math.round((IDX)/ORDER.length*100);
+  sec.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><b>Stimulus ${IDX+1} / ${ORDER.length}</b> &middot; participant <code>${PART.participant_id}</code></div>
+        ${reveal? `<div class="flags"><span class="pill">${s.genre}</span><span class="pill">level ${s.allocation_level.toFixed(2)}</span></div>`:""}
+      </div>
+      <div class="progress"><i style="width:${pct}%"></i></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+        <div><div class="muted" style="margin-bottom:4px">Source action: <b style="color:var(--ink)">${s.action_label}</b></div>
+          <div class="videowrap"><video src="${s.original_video_path}" autoplay muted loop playsinline
+            onerror="this.parentElement.innerHTML='<div class=muted style=\\'padding:24px;text-align:center\\'>original skeleton<br>not available</div>'"></video></div></div>
+        <div><div class="muted" style="margin-bottom:4px">Translated output</div>
+          <div class="videowrap"><video src="${s.output_video_path}" autoplay muted loop playsinline controls
+            onerror="this.parentElement.innerHTML='<div class=warnbox>Stimulus video not found. Generate it with make_stimuli.py and commit research/.</div>'"></video></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Rate this video</h3>
+      <div class="muted" style="margin-bottom:6px">1 = left anchor, 7 = right anchor.</div>
+      <div id="rateblock">${RATINGS.map(r=>rateRow(r)).join("")}</div>
+    </div>
+    <div class="card">
+      <h3>In your words</h3>
+      ${QUALS.map(q=>`<label class="fld">${q[1]}</label><textarea id="q_${q[0]}"></textarea>`).join("")}
+    </div>
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+      <button onclick="prevStim()" ${IDX===0?"disabled":""}>&larr; Back</button>
+      <span class="muted" id="savenote"></span>
+      <button class="primary" onclick="nextStim()">${IDX+1===ORDER.length?"Finish":"Save &amp; next"} &rarr;</button>
+    </div>`;
+  // restore any saved answers for this stimulus
+  const prev=PART.responses[sid];
+  if(prev){ RATINGS.forEach(r=>{ if(prev[r[0]]) markScale(r[0], prev[r[0]]); });
+    QUALS.forEach(q=>{ const el=document.getElementById("q_"+q[0]); if(el&&prev[q[0]]) el.value=prev[q[0]]; }); }
+}
+function rateRow(r){ return `<div class="rate"><div class="q">${r[1]}</div><div class="scale" data-k="${r[0]}">`+
+  Array.from({length:7},(_,i)=>`<label onclick="selScale(this)"><input type="radio" name="rate_${r[0]}" value="${i+1}">${i+1}</label>`).join("")+
+  `</div><div class="anchor"><span>${r[2]}</span><span>${r[3]}</span></div></div>`; }
+function markScale(key,v){ const box=document.querySelector(`.scale[data-k="${key}"]`); if(!box) return;
+  const lab=box.querySelectorAll("label")[v-1]; if(lab){ box.querySelectorAll("label").forEach(l=>l.classList.remove("sel")); lab.classList.add("sel"); lab.querySelector("input").checked=true; } }
+
+function collect(){
+  const sid=ORDER[IDX], s=STIM.find(x=>x.stimulus_id===sid), row={ timestamp:new Date().toISOString() };
+  let missing=0;
+  RATINGS.forEach(r=>{ const v=val("rate_"+r[0]); row[r[0]]=v?+v:""; if(!v) missing++; });
+  QUALS.forEach(q=>{ row[q[0]]=(document.getElementById("q_"+q[0]).value||"").trim(); });
+  return { sid, row, missing };
+}
+function persist(){ const {sid,row}=collect(); PART.responses[sid]=row; PART.idx=IDX; savePart(PART); }
+function nextStim(){
+  const {sid,row,missing}=collect();
+  if(missing>0 && !confirm(`${missing} rating(s) left blank. Continue anyway?`)) return;
+  PART.responses[sid]=row; IDX++; PART.idx=IDX; savePart(PART);
+  window.scrollTo(0,0); renderSurvey();
+}
+function prevStim(){ persist(); if(IDX>0) IDX--; PART.idx=IDX; savePart(PART); window.scrollTo(0,0); renderSurvey(); }
+
+function screenDone(sec){
+  sec.innerHTML=`<div class="card"><h3>Thank you</h3>
+    <p class="muted">All ${ORDER.length} stimuli complete for <code>${PART.participant_id}</code>. Your responses are saved in this browser.</p>
+    <div style="margin-top:14px">
+      <button class="primary" onclick="dlRaw()">Download raw CSV</button>
+      <button onclick="dlSummary()" style="margin-left:8px">Download summary CSV</button>
+      <button onclick="PART=null;renderSurvey()" style="margin-left:8px">New participant</button>
+    </div></div>`;
+}
+
+// ---------- CSV export ----------
+function esc(v){ v=(v==null?"":String(v)); return /[",\n]/.test(v)? '"'+v.replace(/"/g,'""')+'"' : v; }
+function stimMeta(sid){ return STIM.find(s=>s.stimulus_id===sid)||{}; }
+function allRows(){
+  const rows=[];
+  partIds().map(getPart).filter(Boolean).forEach(p=>{
+    Object.entries(p.responses||{}).forEach(([sid,r])=>{
+      const s=stimMeta(sid);
+      rows.push({ participant_id:p.participant_id, timestamp:r.timestamp, stimulus_id:sid,
+        source_video_filename:s.source_video_filename, action_label:s.action_label, action_type:s.action_type,
+        social_dimension:s.social_dimension, repetition_dimension:s.repetition_dimension,
+        genre:s.genre, allocation_level:s.allocation_level,
+        ...Object.fromEntries(RATINGS.map(x=>[x[0], r[x[0]]])),
+        ...Object.fromEntries(QUALS.map(x=>[x[0], r[x[0]]])) });
+    });
+  });
+  return rows;
+}
+function dlRaw(){
+  const rows=allRows();
+  const csv=[RAW_COLS.join(",")].concat(rows.map(r=>RAW_COLS.map(c=>esc(r[c])).join(","))).join("\n");
+  download("unnoticed_dance_round2_raw.csv", csv);
+  if(!rows.length) alert("No responses stored yet.");
+}
+function dlSummary(){
+  const rows=allRows(), groups={};
+  rows.forEach(r=>{ const k=[r.action_label,r.genre,r.allocation_level].join("|");
+    (groups[k]=groups[k]||[]).push(r); });
+  const means=RATINGS.map(r=>"mean_"+r[0]);
+  const cols=["action_label","genre","allocation_level","n_participants",...means];
+  const out=[cols.join(",")];
+  Object.entries(groups).forEach(([k,rs])=>{
+    const [action,genre,level]=k.split("|");
+    const parts=new Set(rs.map(r=>r.participant_id));
+    const row=[esc(action),esc(genre),esc(level),parts.size];
+    RATINGS.forEach(r=>{ const vals=rs.map(x=>x[r[0]]).filter(v=>v!==""&&v!=null).map(Number);
+      row.push(vals.length? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(3):""); });
+    out.push(row.join(","));
+  });
+  download("unnoticed_dance_round2_summary.csv", out.join("\n"));
+  if(!rows.length) alert("No responses stored yet.");
+}
+function download(name,text){ const b=new Blob([text],{type:"text/csv"}); const a=document.createElement("a");
+  a.href=URL.createObjectURL(b); a.download=name; a.click(); URL.revokeObjectURL(a.href); }
+
+init();
+</script>
+</body>
+</html>
