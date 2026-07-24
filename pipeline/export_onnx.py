@@ -50,9 +50,25 @@ def main():
     # 1. ONNX export (dynamic batch of windows, shape (N, WIN, 22, 3))
     onnx_path = os.path.join(a.out_dir, "proto_encoder.onnx")
     dummy = torch.randn(2, WIN, 22, 3)
-    torch.onnx.export(enc, dummy, onnx_path, opset_version=17,
+    torch.onnx.export(enc, dummy, onnx_path, opset_version=18,
                       input_names=["windows"], output_names=["embedding"],
                       dynamic_axes={"windows": {0: "batch"}, "embedding": {0: "batch"}})
+    # the dynamo exporter may split weights into <name>.onnx.data; fold everything into ONE file so the
+    # website only has to fetch a single asset
+    try:
+        import onnx
+        m = onnx.load(onnx_path)                              # loads external data into memory
+        for t in m.graph.initializer:
+            if t.data_location == onnx.TensorProto.EXTERNAL:
+                t.data_location = onnx.TensorProto.DEFAULT
+                del t.external_data[:]
+        onnx.save(m, onnx_path)
+        data_file = onnx_path + ".data"
+        if os.path.exists(data_file):
+            os.remove(data_file)
+            print("[export] folded external weights into a single .onnx file")
+    except ImportError:
+        pass
     print(f"[export] encoder -> {onnx_path}  ({os.path.getsize(onnx_path)/1024:.0f} KB)")
 
     # 2. prototypes: mean embedding per genre over ALL data/<genre>/ clips (fallback: refs/<genre>.json)

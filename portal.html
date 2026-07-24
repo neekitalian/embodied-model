@@ -192,7 +192,15 @@ async function loadModel(){
     const ORT_CDN = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/";
     const ort = await import(ORT_CDN + "ort.min.mjs");
     ort.env.wasm.wasmPaths = ORT_CDN;
-    const session = await ort.InferenceSession.create("/pipeline/model/proto_encoder.onnx");
+    // the torch dynamo exporter may split weights into a companion .onnx.data file; fetch it if present
+    const mr = await fetch("/pipeline/model/proto_encoder.onnx", {cache:"no-store"});
+    if(!mr.ok) return;
+    const modelBuf = new Uint8Array(await mr.arrayBuffer());
+    const opts = {};
+    try { const dr = await fetch("/pipeline/model/proto_encoder.onnx.data", {cache:"no-store"});
+      if(dr.ok) opts.externalData = [{ path: "proto_encoder.onnx.data", data: new Uint8Array(await dr.arrayBuffer()) }];
+    } catch(e){}
+    const session = await ort.InferenceSession.create(modelBuf, opts);
     MODEL.ort=ort; MODEL.session=session; MODEL.genres=pj.genres; MODEL.protos=pj.protos;
     MODEL.tau=pj.tau||1; MODEL.win=pj.win||24; MODEL.stride=pj.stride||12;
     if(clip) rebuildTiles();                       // re-judge an already-captured clip with the model
