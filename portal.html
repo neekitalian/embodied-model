@@ -40,6 +40,7 @@
   input[type=range] { accent-color:var(--accent); width:100%; }
   .mini { font-size:.76rem; color:var(--dim); display:inline-flex; align-items:center; gap:6px; }
   .slab { display:block; font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; color:var(--dim); margin:12px 0 5px; }
+  .slab b { float:right; color:var(--ink); font-weight:600; font-variant-numeric:tabular-nums; }
   .meta { font-size:.74rem; color:var(--dim); margin-top:8px; min-height:15px; }
   #note { font-size:.74rem; color:var(--dim); margin-top:11px; }
   .dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:#555; margin-right:7px; }
@@ -105,6 +106,19 @@
       <label class="slab">Timeline (drives every screen)</label>
       <input type="range" id="scrub" min="0" max="0" value="0" disabled>
       <div id="note">No clip yet - record or upload one above.</div>
+    </div>
+
+    <div class="grp">
+      <span class="glab">Body-part editing</span>
+      <p class="desc" style="margin-bottom:10px">How much genre each part carries. Root stays you (place &amp; locomotion); the limbs carry the dance.</p>
+      <label class="slab">Root / hips <b id="pv_root">0.00</b></label>
+      <input type="range" id="part_root" min="0" max="1" step="0.05" value="0">
+      <label class="slab">Torso / spine <b id="pv_torso">0.35</b></label>
+      <input type="range" id="part_torso" min="0" max="1" step="0.05" value="0.35">
+      <label class="slab">Arms <b id="pv_arms">1.00</b></label>
+      <input type="range" id="part_arms" min="0" max="1" step="0.05" value="1">
+      <label class="slab">Legs <b id="pv_legs">0.85</b></label>
+      <input type="range" id="part_legs" min="0" max="1" step="0.05" value="0.85">
     </div>
 
     <div class="grp">
@@ -396,7 +410,12 @@ function enhanceTransfer(visitor, ref, baseAlpha, gain, cap){
 // your limbs toward it weighted by similarity. This transplants actual genre articulation (a real
 // pirouette / bounce), unlike transfer() which only reshapes your own trajectory. Mirrors pipeline/genre_graft.py.
 // per-zone GENRE strength: root fully you (locomotion), torso mostly you, limbs carry the genre.
-const ZONE_GENRE = { root:0.0, spine:0.35, left_arm:1.0, right_arm:1.0, left_leg:0.85, right_leg:0.85 };
+// Driven by the 4 body-part sliders (arms/legs each fan out to their left+right zones).
+let partGenre = { root:0.0, torso:0.35, arms:1.0, legs:0.85 };
+let ZONE_GENRE = {};
+function syncZoneGenre(){ ZONE_GENRE = { root:partGenre.root, spine:partGenre.torso,
+  left_arm:partGenre.arms, right_arm:partGenre.arms, left_leg:partGenre.legs, right_leg:partGenre.legs }; }
+syncZoneGenre();
 function unwrap(arr){ const o=arr.slice(); for(let i=1;i<o.length;i++){ let d=o[i]-o[i-1];
   while(d>Math.PI){o[i]-=2*Math.PI; d=o[i]-o[i-1];} while(d<-Math.PI){o[i]+=2*Math.PI; d=o[i]-o[i-1];} } return o; }
 function bodyScale(clip){ let d=0,n=0; for(const f of clip){ const h=f[H.pelvis];
@@ -566,6 +585,14 @@ let landmarker=null, camReady=false, recording=false, source="cam", replaying=fa
 let recFrames=[], recStart=0, recStopAt=0, fileURL=null, clip=null, clipFps=30, styleAlpha=0.45;
 const alphaSlider=document.getElementById("alpha");
 alphaSlider.oninput=()=>{ styleAlpha=parseFloat(alphaSlider.value); rebuildTiles(); };
+// per-body-part editing: each slider sets how much genre motion that part carries (arms/legs fan out
+// to their left+right zones). Defaults match the pipeline's ZONE_GENRE, so nothing changes until moved.
+["root","torso","arms","legs"].forEach(k=>{
+  const el=document.getElementById("part_"+k), out=document.getElementById("pv_"+k);
+  if(!el) return;
+  el.oninput=()=>{ partGenre[k]=parseFloat(el.value); if(out) out.textContent=partGenre[k].toFixed(2);
+    syncZoneGenre(); if(clip) rebuildTiles(); };
+});
 
 // leave the uploaded-video replay mode and return the capture panel to the webcam
 function exitReplay(){
@@ -632,47 +659,72 @@ function drawOverlay(j22, mirror){
 // ---------- record / upload ----------
 recBtn.onclick=()=>{ exitReplay(); source="cam"; recFrames=[]; recording=true; recStart=performance.now(); recStopAt=recStart+parseFloat(durSel.value)*1000;
   recBtn.disabled=true; stopBtn.disabled=false; durSel.disabled=true; videoFile.disabled=true; fileLabel.classList.add("dis"); };
-stopBtn.onclick=()=>{ source==="file"?finishUpload():stopRecording(); };
+stopBtn.onclick=()=>{ if(source==="file") cancelUpload=true; else stopRecording(); };
 function stopRecording(){ if(!recording) return; recording=false; recBtn.disabled=false; stopBtn.disabled=true; durSel.disabled=false;
   videoFile.disabled=false; fileLabel.classList.remove("dis"); finalizeClip(Math.max(1,Math.round(recFrames.length/((performance.now()-recStart)/1000)))); }
-videoFile.onchange=async(e)=>{ const f=e.target.files[0]; if(!f) return;
+let cancelUpload=false;
+// resolve on the next `ev` from `el`, or reject after `ms` (so a stuck decode never hangs the loop)
+function once(el, ev, ms){ return new Promise((res,rej)=>{ let done=false;
+  const ok=()=>{ if(done) return; done=true; cl(); res(); };
+  const t=ms?setTimeout(()=>{ if(done) return; done=true; cl(); rej(new Error("timeout")); }, ms):null;
+  function cl(){ el.removeEventListener(ev, ok); if(t) clearTimeout(t); }
+  el.addEventListener(ev, ok); }); }
+
+videoFile.onchange=(e)=>{ const f=e.target.files[0]; if(f) processUpload(f); };
+// Seek-based extraction: step through the decoded video and run pose per frame. Works for ANY codec the
+// browser can decode (H.264 MP4 included), needs no autoplay, and can't false-fail on slow buffering.
+async function processUpload(f){
   if(!landmarker){ showBanner("Pose model isn't ready yet - wait a moment and retry.","err"); return; }
   exitReplay();
   if(fileURL) URL.revokeObjectURL(fileURL); fileURL=URL.createObjectURL(f);
-  upvideo.src=fileURL; upvideo.loop=false; upvideo.muted=true; upvideo.currentTime=0; video.style.display="none"; upvideo.style.display="block";
-  await upvideo.play().catch(()=>{}); overlay.width=upvideo.videoWidth||640; overlay.height=upvideo.videoHeight||480;
-  source="file"; recFrames=[]; recording=true; recStart=performance.now();
-  recBtn.disabled=true; stopBtn.disabled=false; durSel.disabled=true; recMeta.innerHTML=`<span class="dot rec"></span>Processing video…`;
-  // watchdog: if the clip never advances (undecodable codec such as HEVC / MPEG-4), fail with advice instead of hanging
-  uploadStartT=performance.now();
-  if(uploadWatch) clearInterval(uploadWatch);
-  uploadWatch=setInterval(()=>{
-    if(source!=="file" || !recording){ clearInterval(uploadWatch); uploadWatch=null; return; }
-    if(upvideo.currentTime<0.05 && performance.now()-uploadStartT>5000)
-      abortUpload("Could not read that video in the browser. It is likely a codec browsers cannot play (HEVC or MPEG-4). Re-encode it to H.264 MP4, or try a shorter clip.");
-  }, 1000);
-  upvideo.onerror=()=>abortUpload("That video failed to load. Re-encode it to H.264 MP4 - browsers cannot decode HEVC or MPEG-4 clips.");
-  upvideo.onended=finishUpload; };
+  source="file"; recFrames=[]; recording=false; cancelUpload=false;
+  video.style.display="none"; upvideo.style.display="block";
+  upvideo.loop=false; upvideo.muted=true; upvideo.pause();
+  recBtn.disabled=true; stopBtn.disabled=false; durSel.disabled=true;
+  recMeta.innerHTML=`<span class="dot rec"></span>Loading video…`;
+  let hadError=false; upvideo.onerror=()=>{ hadError=true; };
+  upvideo.src=fileURL;
+  const codecMsg="Could not read that video. Re-encode it to H.264 MP4 (browsers cannot decode HEVC or MPEG-4), or try a shorter clip.";
+  try { await once(upvideo,"loadedmetadata",15000); }
+  catch(err){ return abortUpload(codecMsg); }
+  if(hadError || !isFinite(upvideo.duration) || upvideo.duration<=0) return abortUpload(codecMsg);
+  overlay.width=upvideo.videoWidth||640; overlay.height=upvideo.videoHeight||480;
+  const dur=Math.min(upvideo.duration, 60), fps=30, step=1/fps;   // sample <=60s at 30fps
+  const nWant=Math.min(MAX_FRAMES, Math.max(2, Math.round(dur*fps)));
+  let ts=performance.now(), covered=0;                             // ts strictly increasing across cam+file
+  for(let i=0;i<nWant;i++){
+    if(cancelUpload || source!=="file") break;
+    const t=Math.min(dur-1e-3, (i+0.5)*step);
+    try { upvideo.currentTime=t; await once(upvideo,"seeked",8000); }
+    catch(err){ break; }                                          // decode stalled - keep what we have
+    covered=t;
+    let res; try { res=landmarker.detectForVideo(upvideo, ts+=1000/fps); } catch(err){ break; }
+    octx.clearRect(0,0,overlay.width,overlay.height);
+    if(res.landmarks && res.landmarks[0]) drawOverlay(mp33to22(res.landmarks[0]), false);
+    if(res.worldLandmarks && res.worldLandmarks[0]) recFrames.push(toYupHip(mp33to22(res.worldLandmarks[0])));
+    recMeta.innerHTML=`<span class="dot rec"></span>Processing video… ${(100*(i+1)/nWant)|0}% · ${recFrames.length} frames`;
+  }
+  finishUpload(covered||dur);
+}
 function abortUpload(msg){
-  if(uploadWatch){ clearInterval(uploadWatch); uploadWatch=null; }
-  recording=false; upvideo.onended=null; upvideo.onerror=null; try{ upvideo.pause(); }catch(e){}
+  recording=false; upvideo.onerror=null; try{ upvideo.pause(); }catch(e){}
   upvideo.style.display="none"; video.style.display="block";
   overlay.width=video.videoWidth||640; overlay.height=video.videoHeight||480; octx.clearRect(0,0,overlay.width,overlay.height);
   source="cam"; recBtn.disabled=!camReady; stopBtn.disabled=true; durSel.disabled=false; videoFile.disabled=false; fileLabel.classList.remove("dis"); videoFile.value="";
   recMeta.textContent=msg; showBanner(msg,"err");
 }
-function finishUpload(){ if(source!=="file") return; if(uploadWatch){ clearInterval(uploadWatch); uploadWatch=null; } recording=false; upvideo.onended=null; upvideo.onerror=null;
-  const dur=upvideo.duration||((performance.now()-recStart)/1000);
+function finishUpload(dur){ if(source!=="file") return; upvideo.onerror=null;
+  const nframes=recFrames.length;
   source="cam"; recBtn.disabled=!camReady; stopBtn.disabled=true; durSel.disabled=false; videoFile.disabled=false; fileLabel.classList.remove("dis"); videoFile.value="";
   octx.clearRect(0,0,overlay.width,overlay.height);
-  if(recFrames.length<2){
+  if(nframes<2){
     upvideo.pause(); upvideo.style.display="none"; video.style.display="block";
     overlay.width=video.videoWidth||640; overlay.height=video.videoHeight||480;
     recMeta.textContent="No pose found in that video - try one with a full body visible."; return;
   }
   // success: keep the uploaded video replaying (looping) in the capture panel next to the transformed tiles
-  replaying=true; upvideo.loop=true; upvideo.currentTime=0; upvideo.play().catch(()=>{});
-  finalizeClip(Math.max(1,Math.round(recFrames.length/Math.max(0.1,dur))), recFrames.length>=MAX_FRAMES); }
+  replaying=true; upvideo.loop=true; upvideo.muted=true; upvideo.currentTime=0; upvideo.play().catch(()=>{});
+  finalizeClip(Math.max(1,Math.round(nframes/Math.max(0.1,dur))), nframes>=MAX_FRAMES); }
 
 // ---------- finalize: build the 4 tiles ----------
 function finalizeClip(fps, truncated){
