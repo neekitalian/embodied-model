@@ -105,12 +105,14 @@
 
 <footer>
   Runs entirely in your browser (nothing is uploaded). Pose via MediaPipe Tasks Vision (CDN).
-  <b>First principle: protect the identity movement.</b> When the AIST genre references are available, each tile runs
-  the <b>real per-zone transfer</b> (a browser port of <code>pipeline/genre_style.py</code>): content = your motion,
-  style = a genre reference clip, rhythm-aligned and blended per anatomical zone by the <b>α</b> slider (0 = you, 1 =
-  full genre). Root is protected; limbs carry the genre. If the references aren't loaded it falls back to heuristic
-  editions. Note the <b>α-trap</b>: high α smooths energy away - 0.3-0.5 reads best. “Original” is untouched;
-  “⬇ JSON” exports it (HumanML3D-22, y-up), which feeds <code>run_local.py</code>.
+  <b>First principle: protect the identity movement.</b> When the trained model is deployed, a prototypical ST-GCN
+  encoder (AIST-pretrained) runs in your browser and decides <b>which genre your body dances</b>. Each tile then does a
+  <b>motif graft</b> (a browser port of <code>pipeline/genre_graft.py</code>): your motion is DTW-aligned to the genre
+  reference, and where you resemble it the tile splices in the reference's <b>real genre movement</b> - the actual
+  extension or bounce the reference dancer performed, not a reshaping of your own motion. Your <b>root stays yours</b>
+  (locomotion, identity of place); the limbs carry the genre, gated by similarity with the <b>α</b> slider as the floor.
+  If the model or references aren't loaded it falls back to Laban matching, then to heuristic editions. “Original” is
+  untouched; “⬇ JSON” exports it (HumanML3D-22, y-up), which feeds the pipeline.
 </footer>
 
 <script type="module">
@@ -385,6 +387,63 @@ function enhanceTransfer(visitor, ref, baseAlpha, gain, cap){
   return { out, mean: sc.mean };
 }
 
+// ---------- MOTIF GRAFT (Scheme B): splice the reference's REAL genre motion into you where you align ----
+// DTW-align your windows to the reference's in the Laban feature space -> a smooth frame map r(t); per
+// frame take the real reference pose, face it like you + scale to your body, keep your ROOT, and blend
+// your limbs toward it weighted by similarity. This transplants actual genre articulation (a real
+// pirouette / bounce), unlike transfer() which only reshapes your own trajectory. Mirrors pipeline/genre_graft.py.
+function unwrap(arr){ const o=arr.slice(); for(let i=1;i<o.length;i++){ let d=o[i]-o[i-1];
+  while(d>Math.PI){o[i]-=2*Math.PI; d=o[i]-o[i-1];} while(d<-Math.PI){o[i]+=2*Math.PI; d=o[i]-o[i-1];} } return o; }
+function bodyScale(clip){ let d=0,n=0; for(const f of clip){ const h=f[H.pelvis];
+  for(const p of f){ d+=Math.hypot(p[0]-h[0],p[1]-h[1],p[2]-h[2]); n++; } } return d/Math.max(1,n)+1e-6; }
+function poseYaw(pose){ const a=pose[H.spine3],b=pose[H.pelvis]; return Math.atan2(a[0]-b[0], a[2]-b[2]+1e-8); }
+function dtwPath(V, R){
+  const Nv=V.length, Nr=R.length, INF=1e18;
+  const D=Array.from({length:Nv+1},()=>new Float64Array(Nr+1).fill(INF)); D[0][0]=0;
+  for(let i=1;i<=Nv;i++){ const vi=V[i-1];
+    for(let j=1;j<=Nr;j++){ let dot=0; const rj=R[j-1]; for(let k=0;k<vi.length;k++) dot+=vi[k]*rj[k];
+      D[i][j]=(1-dot)+Math.min(D[i-1][j-1],D[i-1][j],D[i][j-1]); } }
+  let i=Nv,j=Nr; const path=[];
+  while(i>0&&j>0){ path.push([i-1,j-1]); const a=D[i-1][j-1],b=D[i-1][j],c=D[i][j-1];
+    if(a<=b&&a<=c){i--;j--;} else if(b<=c){i--;} else {j--;} }
+  path.reverse(); return path;
+}
+function graft(visitor, reference, curve, floor, gain, cap){
+  const win=24, stride=12, T=visitor.length, RL=reference.length;
+  const { stats } = motifBank(reference, win, stride);
+  const vS=[], rS=[];
+  for(let a=0;a+win<=T;a+=stride) vS.push(a); if(!vS.length) vS.push(0);
+  for(let a=0;a+win<=RL;a+=stride) rS.push(a); if(!rS.length) rS.push(0);
+  const V=vS.map(a=>zscoreNorm(labanDesc(visitor,a,Math.min(a+win,T)),stats));
+  const R=rS.map(a=>zscoreNorm(labanDesc(reference,a,Math.min(a+win,RL)),stats));
+  const path=dtwPath(V,R), vmap={};
+  for(const [vi,rj] of path){ (vmap[vi]=vmap[vi]||[]).push(rj); }
+  const vC=vS.map(a=>a+win/2);
+  const rForV=vS.map((a,vi)=>{ const rs=vmap[vi]||[0]; return rs.reduce((x,rj)=>x+rS[rj]+win/2,0)/rs.length; });
+  const rFrame=new Array(T);
+  for(let t=0;t<T;t++){
+    if(t<=vC[0]) rFrame[t]=rForV[0];
+    else if(t>=vC[vC.length-1]) rFrame[t]=rForV[rForV.length-1];
+    else { let k=1; while(k<vC.length&&vC[k]<t)k++; const f=(t-vC[k-1])/(vC[k]-vC[k-1]); rFrame[t]=rForV[k-1]+f*(rForV[k]-rForV[k-1]); } }
+  for(let t=1;t<T;t++) rFrame[t]=0.15*rFrame[t]+0.85*rFrame[t-1];
+  const rIdx=rFrame.map(x=>Math.max(0,Math.min(RL-1,Math.round(x))));
+  const scl=bodyScale(visitor)/bodyScale(reference);
+  const vyaw=unwrap(visitor.map(poseYaw)), ryaw=unwrap(rIdx.map(t=>poseYaw(reference[t])));
+  const dyaw=vyaw.map((v,t)=>v-ryaw[t]);
+  for(let t=1;t<T;t++) dyaw[t]=0.1*dyaw[t]+0.9*dyaw[t-1];
+  const out=visitor.map(f=>f.map(p=>p.slice()));
+  for(let t=0;t<T;t++){
+    const rf=reference[rIdx[t]], rh=rf[H.pelvis], vh=visitor[t][H.pelvis];
+    const ca=Math.cos(dyaw[t]), sa=Math.sin(dyaw[t]);
+    const w=Math.max(0,Math.min(cap, floor+gain*(curve[t]||0)));
+    for(const [zone,js] of Object.entries(ZONES)){ if(zone==="root") continue;
+      for(const j of js){ const rx=rf[j][0]-rh[0], ry=rf[j][1]-rh[1], rz=rf[j][2]-rh[2];
+        const gx=vh[0]+(rx*ca+rz*sa)*scl, gy=vh[1]+ry*scl, gz=vh[2]+(-rx*sa+rz*ca)*scl;
+        out[t][j]=[ (1-w)*visitor[t][j][0]+w*gx, (1-w)*visitor[t][j][1]+w*gy, (1-w)*visitor[t][j][2]+w*gz ]; } }
+  }
+  return oneEuro(out, 0.5);                          // smooth graft seams
+}
+
 // ---------- identity-preserving edition: same trajectory, slight scale + frequency modulation ----------
 function meanPose(clip){ const T=clip.length, m=Array.from({length:22},()=>[0,0,0]);
   for(const f of clip) for(let j=0;j<22;j++){ m[j][0]+=f[j][0]; m[j][1]+=f[j][1]; m[j][2]+=f[j][2]; }
@@ -600,11 +659,10 @@ async function rebuildTiles(){
     if(to.orig){ to.clip=clip; to.sim=null; continue; }
     const ref=refs[to.name];
     if(!ref){ to.clip=edition(clip, to.g, clipFps); to.sim=null; continue; }
-    const s=sc[to.name], rel=(s.mean-mn)/((mx-mn)||1), gain=0.30+0.55*rel;
-    const styled=transfer(clip, ref, 0.9);
-    const out=clip.map((f,t)=>{ const w=Math.max(0,Math.min(0.9, styleAlpha+gain*s.curve[t]));
-      return f.map((p,j)=>[ (1-w)*p[0]+w*styled[t][j][0], (1-w)*p[1]+w*styled[t][j][1], (1-w)*p[2]+w*styled[t][j][2] ]); });
-    to.clip=edition(out, to.g, clipFps); to.sim=s.mean; real++;
+    // MOTIF GRAFT: splice in the reference's real genre motion where you resemble it (gate = the
+    // similarity curve, trained-model or Laban). The genre you most resemble gets the strongest graft.
+    const s=sc[to.name], rel=(s.mean-mn)/((mx-mn)||1), gain=0.30+0.50*rel;
+    to.clip=graft(clip, ref, s.curve, styleAlpha, gain, 0.95); to.sim=s.mean; real++;
     if(s.mean>bestM){ bestM=s.mean; best=to.name; }
   }
   // captions: match % + allocation star for the closest genre

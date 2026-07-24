@@ -41,7 +41,12 @@ ok &= ck("edited shape (T,22,3)", edited.shape[1:] == (22, 3))
 ok &= ck("edited length == visitor", len(edited) == len(visitor))
 dev = float(np.mean(np.linalg.norm(edited - visitor[:len(edited)], axis=-1)))
 ok &= ck(f"edit changes the movement (dev={dev:.3f}>0)", dev > 1e-3)
-ok &= ck("report has all keys", set(rep) == {"genre", "scores", "allocation", "similarity", "frames"})
+ok &= ck("report has all keys", {"genre", "scores", "allocation", "similarity", "frames"} <= set(rep))
+
+# graft edit path: real genre motion spliced in, full length, root preserved
+eg, rg = ex.unnoticed_dance(visitor, refs, graft=True)
+ok &= ck("graft edit finite + full length", bool(np.all(np.isfinite(eg))) and len(eg) == len(visitor))
+ok &= ck("graft report tagged edit=graft", rg.get("edit") == "graft")
 ok &= ck(f"allocation sums to 1 ({sum(rep['allocation'].values()):.3f})", abs(sum(rep["allocation"].values()) - 1.0) < 1e-5)
 ok &= ck(f"allocated genre is the most similar ({rep['genre']})", rep["genre"] == max(rep["scores"], key=rep["scores"].get))
 ok &= ck("body most resembles 'like'", rep["genre"] == "like")

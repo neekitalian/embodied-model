@@ -68,11 +68,14 @@ def fit_models(references, win=gm.WIN, stride=gm.STRIDE):
     return {g: GenreModel.fit(g, r, win, stride) for g, r in references.items()}
 
 
-def unnoticed_dance(visitor, references, base_alpha=0.45, gain=0.6, cap=0.9, models=None):
+def unnoticed_dance(visitor, references, base_alpha=0.45, gain=0.6, cap=0.9, models=None, graft=False):
     """The exhibition function: read -> compare -> allocate -> edit.
 
     visitor    : HumanML3D-22 clip (T,22,3), the daily action.
     references : {genre: clip} dance references (or pass pre-fit `models` to skip fitting).
+    graft      : if True, the EDIT splices the reference's REAL genre motion (genre_graft) into the
+                 visitor where they align - looks genuinely like the genre - instead of the geometric
+                 transfer; gated by the same similarity curve. Root is kept either way.
     Returns (edited_clip, report) where report = {genre, scores, allocation, similarity, frames}.
     """
     visitor = np.asarray(visitor, dtype=np.float32)          # 1. READ
@@ -85,9 +88,14 @@ def unnoticed_dance(visitor, references, base_alpha=0.45, gain=0.6, cap=0.9, mod
     allocation = {g: scores[g] / total for g in scores}      # 3. ALLOCATE (which genre the body dances)
     genre = max(scores, key=scores.get)
 
-    edited, sim = models[genre].edit(visitor, base_alpha, gain, cap)   # 4. EDIT with the fitted model
+    if graft:                                                # 4. EDIT: graft real genre motion, gated by similarity
+        import genre_graft
+        edited, sim = genre_graft.graft(visitor, references[genre], floor=base_alpha,
+                                        gain=gain, cap=max(cap, 0.95), curve=curves[genre][0])
+    else:
+        edited, sim = models[genre].edit(visitor, base_alpha, gain, cap)
     report = {"genre": genre, "scores": scores, "allocation": allocation,
-              "similarity": float(sim), "frames": int(len(edited))}
+              "similarity": float(sim), "frames": int(len(edited)), "edit": "graft" if graft else "transfer"}
     return edited, report
 
 
@@ -107,6 +115,8 @@ def main():
                                     "uses the LEARNED embedding for compare/allocate (needs torch)")
     ap.add_argument("--protos-dir", help="labeled clips folder (data/<genre>/*) to build each genre's "
                                          "prototype from ALL its clips instead of the single reference")
+    ap.add_argument("--graft", action="store_true", help="EDIT by grafting the reference's real genre "
+                                                         "motion (genre_graft) instead of geometric transfer")
     ap.add_argument("--out", default="edited.npy", help="edited clip output (.npy)")
     a = ap.parse_args()
     a.visitor, a.refs_dir, a.out = map(os.path.expanduser, (a.visitor, a.refs_dir, a.out))
@@ -141,7 +151,7 @@ def main():
         print(f"[unnoticed_dance] using LEARNED prototypical encoder: {a.model}"
               + (f" (prototypes from {a.protos_dir})" if proto_clips else ""))
 
-    edited, rep = unnoticed_dance(visitor, refs, base_alpha=a.alpha, models=models)
+    edited, rep = unnoticed_dance(visitor, refs, base_alpha=a.alpha, models=models, graft=a.graft)
     np.save(a.out, edited.astype(np.float32))
 
     print("[unnoticed_dance] read -> compare -> allocate -> edit")
@@ -150,7 +160,7 @@ def main():
     for g, s in sorted(rep["scores"].items(), key=lambda kv: -kv[1]):
         star = "  <- danced" if g == rep["genre"] else ""
         print(f"       {g:12s} similarity {s:.3f}  ({100*rep['allocation'][g]:4.1f}%)" + star)
-    print(f"  4. EDIT      as {rep['genre']} (mean similarity {rep['similarity']:.3f}) "
+    print(f"  4. EDIT      as {rep['genre']} via {rep['edit']} (mean similarity {rep['similarity']:.3f}) "
           f"-> {edited.shape} -> {a.out}")
     print(f"  Preview: python view_clip.py {a.out}   |   Stream: python run_local.py --visitor {a.visitor} "
           f"--genre {rep['genre']} --enhance --stream")
