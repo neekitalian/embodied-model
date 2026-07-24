@@ -155,7 +155,7 @@ const RAW_COLS = ["participant_id","timestamp","stimulus_id","source_video_filen
 const LS = {
   cfg:"ud_research_config", parts:"ud_research_participants", P:id=>"ud_research_p_"+id,
 };
-let MANIFEST=null, STIM=[], MODE="admin", CONFIG_FILE={};
+let MANIFEST=null, STIM=[], MODE="admin", CONFIG_FILE={}, HISTORICAL=[];
 function getEndpoint(){ return ((getCfg().endpoint||"").trim()) || ((CONFIG_FILE.endpoint||"").trim()); }
 // fire-and-forget POST of one record to the Google Sheet web app (no-cors: request lands, response opaque)
 function pushRemote(obj){ const url=getEndpoint(); if(!url) return;
@@ -191,6 +191,8 @@ async function init(){
   try { const r=await fetch("/research/stimuli.json",{cache:"no-store"}); MANIFEST=await r.json(); STIM=MANIFEST.stimuli||[]; }
   catch(e){ STIM=[]; }
   try { const rc=await fetch("/research/config.json",{cache:"no-store"}); CONFIG_FILE=await rc.json(); }catch(e){ CONFIG_FILE={}; }
+  // pre-loaded historical answers (merged into summary + raw export, kept separate from this browser's localStorage)
+  try { const rh=await fetch("/research/historical.json",{cache:"no-store"}); const h=await rh.json(); HISTORICAL=Array.isArray(h)?h:(h.responses||[]); }catch(e){ HISTORICAL=[]; }
   const epEl=document.getElementById("cfg-endpoint"); if(epEl) epEl.value = getCfg().endpoint || CONFIG_FILE.endpoint || "";
   document.getElementById("foot").innerHTML =
     `48 stimuli = 4 actions &times; 3 genres &times; 4 allocation levels. Responses autosave to this browser after each stimulus; export CSV from Admin. Runs locally and on Vercel (static).`;
@@ -208,7 +210,8 @@ function setMode(m){
 
 // ---------- ADMIN ----------
 async function renderAdmin(){
-  document.getElementById("ad-parts").textContent = partIds().length;
+  { const histIds=new Set(HISTORICAL.map(r=>r.participant_id)); const live=partIds().length;
+    document.getElementById("ad-parts").textContent = histIds.size? `${live} + ${histIds.size} historical` : live; }
   // sources
   const sd=document.getElementById("ad-sources"); sd.innerHTML="";
   (MANIFEST?.actions||[]).forEach(a=>{
@@ -413,7 +416,7 @@ function rawRow(pid, sid, r){ const s=stimMeta(sid);
     ...Object.fromEntries(RATINGS.map(x=>[x[0], r[x[0]]])),
     ...Object.fromEntries(QUALS.map(x=>[x[0], r[x[0]]])) }; }
 function allRows(){
-  const rows=[];
+  const rows=HISTORICAL.slice();   // pre-loaded historical answers first
   partIds().map(getPart).filter(Boolean).forEach(p=>{
     Object.entries(p.responses||{}).forEach(([sid,r])=> rows.push(rawRow(p.participant_id, sid, r)));
   });
