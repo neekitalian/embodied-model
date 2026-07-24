@@ -148,9 +148,7 @@ const RATINGS = [
   ["expressivity","Expressivity","inexpressive","highly expressive"],
   ["genre_preference","Genre preference","dislike this version","like this version"],
 ];
-const QUALS = [
-  ["comment","Any comment? (optional)"],
-];
+const QUALS = [];   // no qualitative questions
 const RAW_COLS = ["participant_id","timestamp","stimulus_id","source_video_filename","action_label","action_type",
   "social_dimension","repetition_dimension","genre","allocation_level",
   ...RATINGS.map(r=>r[0]), ...QUALS.map(q=>q[0])];
@@ -360,10 +358,8 @@ function screenStimulus(sec){
       <div class="muted" style="margin-bottom:6px">1 = left anchor, 7 = right anchor.</div>
       <div id="rateblock">${RATINGS.map(r=>rateRow(r)).join("")}</div>
     </div>
-    <div class="card">
-      <h3>In your words</h3>
-      ${QUALS.map(q=>`<label class="fld">${q[1]}</label><textarea id="q_${q[0]}"></textarea>`).join("")}
-    </div>
+    ${QUALS.length? `<div class="card"><h3>In your words</h3>
+      ${QUALS.map(q=>`<label class="fld">${q[1]}</label><textarea id="q_${q[0]}"></textarea>`).join("")}</div>`:""}
     <div class="card" style="display:flex;justify-content:space-between;align-items:center">
       <button onclick="prevStim()" ${IDX===0?"disabled":""}>&larr; Back</button>
       <span class="muted" id="savenote"></span>

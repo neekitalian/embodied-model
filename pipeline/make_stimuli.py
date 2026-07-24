@@ -19,7 +19,7 @@ Run on your Mac (needs the pipeline deps + ffmpeg for mp4):
 
 Then commit research/sources + research/stimuli + research/stimuli.json so Vercel serves them.
 """
-import argparse, json, os, shutil
+import argparse, json, os, shutil, subprocess
 import numpy as np
 
 import genre_style as gs
@@ -76,6 +76,17 @@ def render(motion, out_path, fps=30):
         anim.save(gif, writer=PillowWriter(fps=fps)); plt.close(fig); return gif
 
 
+def copy_web(src, dst):
+    """Transcode a source video to browser-friendly H.264 (yuv420p + faststart) so it plays inline on
+    the web. Falls back to a raw copy if ffmpeg is missing (some codecs like HEVC then won't play)."""
+    try:
+        subprocess.run(["ffmpeg", "-y", "-i", src, "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                        "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-movflags", "+faststart", dst],
+                       check=True, capture_output=True)
+    except Exception:
+        shutil.copyfile(src, dst)
+
+
 def extract(video_path, out_json, seconds):
     import video_to_reference as v2r
     v2r.process(video_path, out_json, out_fps=30, seconds=seconds)
@@ -120,7 +131,7 @@ def main():
         if not os.path.exists(src_path):
             raise SystemExit(f"missing source video: {src_path}  (put the 4 videos in {vdir})")
         print(f"[{key}] {src} -> {clean}")
-        shutil.copyfile(src_path, os.path.join(SRC_DIR, clean))     # copy under a clean name
+        copy_web(src_path, os.path.join(SRC_DIR, clean))            # transcode to web-safe H.264 under a clean name
 
         orig_json = os.path.join(SRC_DIR, f"{key}_original.json")
         orig_vid = os.path.join(SRC_DIR, f"{key}_original.mp4")
